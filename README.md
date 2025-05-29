@@ -1,6 +1,6 @@
 # Reality Defender Rust SDK
 
-[![Rust Coverage](https://codecov.io/gh/Reality-Defender/eng-sdk/graph/badge.svg?flag=rust&token=P98RNVB21M)](https://codecov.io/gh/Reality-Defender/eng-sdk)
+[![codecov](https://codecov.io/gh/Reality-Defender/realitydefender-sdk-rust/graph/badge.svg?token=QSZA0QTEQ5)](https://codecov.io/gh/Reality-Defender/realitydefender-sdk-rust)
 
 The Reality Defender Rust SDK provides a simple and efficient way to integrate deepfake detection capabilities into your Rust applications.
 
