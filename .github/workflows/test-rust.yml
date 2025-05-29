@@ -34,23 +34,19 @@ jobs:
           rust/target
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
         
-    - name: Check formatting
-      working-directory: ./rust
+    - name: Check formatting      
       run: |
         cargo fmt --all -- --check
         
-    - name: Lint with clippy
-      working-directory: ./rust
+    - name: Lint with clippy      
       run: |
         cargo clippy -- -D warnings
         
     - name: Build
-      working-directory: ./rust
       run: |
         cargo build --verbose
         
     - name: Run tests
-      working-directory: ./rust
       run: |
         cargo test --verbose
         
@@ -60,8 +56,7 @@ jobs:
           cargo install cargo-tarpaulin
         fi
         
-    - name: Generate coverage report
-      working-directory: ./rust
+    - name: Generate coverage report      
       run: |
         cargo tarpaulin --out Xml --output-dir ./
         
@@ -69,7 +64,7 @@ jobs:
       uses: codecov/codecov-action@v3
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-        files: ./rust/cobertura.xml
+        files: ./cobertura.xml
         flags: rust
         name: rust-sdk-codecov
         fail_ci_if_error: true
