@@ -7,7 +7,7 @@ description = "Reality Defender SDK for Rust - Tools for detecting deepfakes and
 documentation = "https://github.com/Reality-Defender/eng-sdk"
 homepage = "https://realitydefender.com"
 repository = "https://github.com/Reality-Defender/eng-sdk"
-license = "MIT"
+license = "Apache-2.0"
 keywords = ["ai", "deepfake", "detection", "media", "verification"]
 categories = ["api-bindings", "multimedia"]
 
