@@ -91,7 +91,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Process multiple files concurrently
     let results = client.process_batch(
-        vec!["./images/image1.jpg", "./images/image2.jpg", "./images/video.mp4"],
+        vec!["./files/image1.jpg", "./files/image2.jpg", "./files/video.mp4"],
         BatchOptions {
             max_concurrency: Some(3),
             wait: Some(true),
@@ -126,7 +126,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     })?;
 
     // Detect a file with a single call
-    let result = client.detect_file("./images/image.jpg").await?;
+    let result = client.detect_file("./files/image.jpg").await?;
     
     println!("Status: {}", result.status);
     if let Some(score) = result.score {
@@ -155,7 +155,35 @@ cargo run --example basic
 cargo run --example batch_processing
 ```
 
-> **Note:** The examples assume that the test files exist in the specified paths. You may need to adjust the file paths to point to actual files on your system.
+### Required Test Files
+
+To run the examples successfully, you'll need to add your own image and video files to the `files` directory:
+
+1. Create an `files` directory in the root of the project (if it doesn't already exist):
+   ```bash
+   mkdir -p files
+   ```
+
+2. Add the following files to this directory:
+   - `image1.jpg` - Any sample image for testing image analysis
+   - `image2.jpg` - Another sample image
+   - `test_image.jpg` - A third test image
+   - `video1.mp4` - A sample video file for testing video analysis
+
+You can use any JPG files and MP4 videos for testing purposes. The examples are configured to use these specific filenames from the `files` directory:
+
+```rust
+// Using the sample files in your code
+let result = client.detect_file("./files/image1.jpg").await?;
+
+// For batch processing
+let results = client.process_batch(
+    vec!["./files/image1.jpg", "./files/image2.jpg", "./files/video1.mp4"],
+    BatchOptions::default()
+).await?;
+```
+
+> **Note:** If you prefer to use different filenames or paths, make sure to update the example code accordingly.
 
 ## How It Works
 

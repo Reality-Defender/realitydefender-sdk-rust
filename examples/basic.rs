@@ -14,7 +14,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     })?;
 
     // Path to the file to analyze - make sure this file exists
-    let file_path = "images/test_image.jpg";
+    let file_path = "files/test_image.jpg";
 
     println!("Checking if file exists at path: {}", file_path);
     if !std::path::Path::new(file_path).exists() {
