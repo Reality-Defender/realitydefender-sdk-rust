@@ -2,11 +2,11 @@ name: Test Rust SDK
 
 on:
   push:
-    branches: [ dev ]
+    branches: [ main ]
     paths:
       - 'rust/**'
   pull_request:
-    branches: [ dev ]
+    branches: [ main ]
     paths:
       - 'rust/**'
 
