@@ -14,11 +14,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     })?;
 
     // List of files to analyze - replace with paths to actual files on your system
-    let files = vec![
-        "images/image1.jpg",
-        "images/image2.jpg",
-        "images/video1.mp4",
-    ];
+    let files = vec!["files/image1.jpg", "files/image2.jpg", "files/video1.mp4"];
 
     // Check if files exist
     let mut valid_files = Vec::new();
