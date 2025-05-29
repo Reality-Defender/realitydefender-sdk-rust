@@ -3,12 +3,8 @@ name: Test Rust SDK
 on:
   push:
     branches: [ main ]
-    paths:
-      - 'rust/**'
   pull_request:
     branches: [ main ]
-    paths:
-      - 'rust/**'
 
 jobs:
   test-rust-sdk:
