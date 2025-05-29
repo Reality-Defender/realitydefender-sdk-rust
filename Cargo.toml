@@ -1,6 +1,6 @@
 [package]
 name = "realitydefender"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["Reality Defender <support@realitydefender.com>"]
 description = "Reality Defender SDK for Rust - Tools for detecting deepfakes and manipulated media"
