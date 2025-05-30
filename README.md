@@ -18,7 +18,7 @@ Add the SDK to your Cargo.toml:
 
 ```toml
 [dependencies]
-realitydefender = "0.1.0"
+realitydefender = "0.1.2"
 ```
 
 ## Usage
