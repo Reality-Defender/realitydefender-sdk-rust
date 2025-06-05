@@ -216,7 +216,6 @@ See the [documentation](https://docs.rs/realitydefender) for complete API detail
 2. Install dependencies:
 
 ```bash
-cd rust
 cargo build
 ```
 
