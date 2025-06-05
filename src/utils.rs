@@ -7,10 +7,10 @@ pub fn file_exists(path: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
+    use crate::utils::file_exists;
     use std::fs::File;
     use std::io::Write;
     use tempfile::tempdir;
-    use crate::utils::file_exists;
 
     #[test]
     fn test_file_exists_with_existing_file() {
@@ -49,5 +49,4 @@ mod tests {
         // Test with an empty path
         assert!(!file_exists(""));
     }
-
 }
