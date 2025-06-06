@@ -9,7 +9,7 @@ on:
         description: Whether this is a release run or not.
 
 jobs:
-  format-check-test-rust-sdk:
+  check-format-test-rust-sdk:
     runs-on: ubuntu-latest
 
     steps:
