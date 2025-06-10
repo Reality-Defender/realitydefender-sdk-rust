@@ -39,7 +39,7 @@ mod config;
 mod error;
 mod http;
 mod models;
-pub mod utils;
+mod utils;
 
 // Re-exports
 pub use client::Client;
