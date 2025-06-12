@@ -6,6 +6,10 @@ on:
         default: false
         type: boolean
         description: Whether this is a release package ready to be published or not.
+      cargo-registry-token:
+        default: ''
+        type: string
+        description: A token required by the Cargo registry to publish packages.
 
   workflow_dispatch:
     inputs:
@@ -13,6 +17,10 @@ on:
         default: false
         type: boolean
         description: Whether this is a release package ready to be published or not.
+      cargo-registry-token:
+        default: ''
+        type: string
+        description: A token required by the Cargo registry to publish packages.
 
 jobs:
   build-publish-rust-sdk:
@@ -62,5 +70,5 @@ jobs:
       - name: Publish
         if: ${{ inputs.is-release == true }}
         run: |
-          cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          cargo publish --token ${{ inputs.cargo-registry-token }}
      
