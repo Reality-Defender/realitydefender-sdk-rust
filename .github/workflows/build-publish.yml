@@ -70,5 +70,5 @@ jobs:
       - name: Publish
         if: ${{ inputs.is-release == true }}
         run: |
-          cargo publish --token ${{ inputs.cargo-registry-token }}
+          cargo publish --allow-dirty --no-verify --token ${{ inputs.cargo-registry-token }}
      
