@@ -14,11 +14,11 @@ The Reality Defender Rust SDK provides a simple and efficient way to integrate d
 
 ## Installation
 
-Add the SDK to your Cargo.toml:
+Add the SDK and Tokio with the full feature set to your Cargo.toml:
 
-```toml
-[dependencies]
-realitydefender = "0.1.2"
+```bash
+cargo add realitydefender
+cargo add tokio --features full
 ```
 
 ## Usage
