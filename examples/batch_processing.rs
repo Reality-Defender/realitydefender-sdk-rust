@@ -39,7 +39,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             valid_files.clone(),
             BatchOptions {
                 max_concurrency: Some(2), // Process 2 files at a time
-                max_attempts: Some(60),         // Wait for results
+                max_attempts: Some(60),   // Wait for results
                 polling_interval: Some(2000),
             },
         )
