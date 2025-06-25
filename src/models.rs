@@ -5,10 +5,6 @@ use serde::{Deserialize, Serialize};
 pub struct UploadOptions {
     /// Path to the file to upload
     pub file_path: String,
-
-    /// Optional metadata for the upload
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub metadata: Option<serde_json::Value>,
 }
 
 /// Response containing a presigned URL for file upload
@@ -60,13 +56,13 @@ pub struct UploadResult {
 /// Options for getting a result
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct GetResultOptions {
-    /// Whether to wait for the result to be ready
+    /// Maximum number of attempts to get results
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub wait: Option<bool>,
+    pub max_attempts: Option<u64>,
 
-    /// Maximum time to wait for the result in seconds
+    /// How long to wait between attempts
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub timeout_seconds: Option<u64>,
+    pub polling_interval: Option<u64>,
 }
 
 /// Model-specific detection results
@@ -154,11 +150,11 @@ pub struct BatchOptions {
     /// Maximum number of concurrent uploads
     pub max_concurrency: Option<usize>,
 
-    /// Whether to wait for results
-    pub wait: Option<bool>,
+    /// Maximum number of attempts to get results
+    pub max_attempts: Option<u64>,
 
-    /// Maximum time to wait for results in seconds
-    pub timeout_seconds: Option<u64>,
+    /// How long to wait between attempts
+    pub polling_interval: Option<u64>,
 }
 
 #[cfg(test)]
@@ -170,7 +166,6 @@ mod tests {
     fn test_upload_options_serialization() {
         let options = UploadOptions {
             file_path: "path/to/file.jpg".to_string(),
-            metadata: Some(json!({ "key": "value" })),
         };
 
         // Ensure we can serialize to JSON
@@ -179,50 +174,47 @@ mod tests {
 
         // Check fields
         assert_eq!(json_value["file_path"], "path/to/file.jpg");
-        assert_eq!(json_value["metadata"]["key"], "value");
     }
 
     #[test]
     fn test_upload_options_default_metadata() {
         let options = UploadOptions {
             file_path: "path/to/file.jpg".to_string(),
-            metadata: None,
         };
 
         let json_str = serde_json::to_string(&options).unwrap();
         let json_value: Value = serde_json::from_str(&json_str).unwrap();
 
         assert_eq!(json_value["file_path"], "path/to/file.jpg");
-        assert!(!json_value.as_object().unwrap().contains_key("metadata"));
     }
 
     #[test]
     fn test_get_result_options_defaults() {
         let options = GetResultOptions::default();
-        assert_eq!(options.wait, None);
-        assert_eq!(options.timeout_seconds, None);
+        assert_eq!(options.max_attempts, None);
+        assert_eq!(options.polling_interval, None);
     }
 
     #[test]
     fn test_get_result_options_serialization() {
         let options = GetResultOptions {
-            wait: Some(true),
-            timeout_seconds: Some(60),
+            max_attempts: Some(30),
+            polling_interval: Some(2000),
         };
 
         let json_str = serde_json::to_string(&options).unwrap();
         let json_value: Value = serde_json::from_str(&json_str).unwrap();
 
-        assert_eq!(json_value["wait"], true);
-        assert_eq!(json_value["timeout_seconds"], 60);
+        assert_eq!(json_value["max_attempts"], 30);
+        assert_eq!(json_value["polling_interval"], 2000);
     }
 
     #[test]
     fn test_batch_options_defaults() {
         let options = BatchOptions::default();
         assert_eq!(options.max_concurrency, None);
-        assert_eq!(options.wait, None);
-        assert_eq!(options.timeout_seconds, None);
+        assert_eq!(options.max_attempts, None);
+        assert_eq!(options.polling_interval, None);
     }
 
     #[test]

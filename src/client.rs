@@ -41,11 +41,16 @@ impl Client {
         options: Option<GetResultOptions>,
     ) -> Result<AnalysisResult> {
         let opts = options.unwrap_or_default();
-        let should_wait = opts.wait.unwrap_or(false);
-        let timeout_seconds = opts.timeout_seconds.unwrap_or(300); // 5 minutes default
+        let should_wait =
+            opts.max_attempts.unwrap_or(0) > 0 && opts.polling_interval.unwrap_or(0) > 0;
 
         if should_wait {
-            self.wait_for_result(request_id, timeout_seconds).await
+            self.wait_for_result(
+                request_id,
+                opts.max_attempts.unwrap(),
+                opts.polling_interval.unwrap(),
+            )
+            .await
         } else {
             self.fetch_result(request_id).await
         }
@@ -142,35 +147,29 @@ impl Client {
     async fn wait_for_result(
         &self,
         request_id: &str,
-        timeout_seconds: u64,
+        max_attempts: u64,
+        polling_interval: u64,
     ) -> Result<AnalysisResult> {
         let start_time = Instant::now();
-        let timeout_duration = Duration::from_secs(timeout_seconds);
 
-        loop {
+        for _ in 0..max_attempts {
             let result = self.fetch_result(request_id).await?;
 
             // Check if analysis is complete. The API uses "ANALYZING" while processing
             // and various status values when complete.
             match result.status.as_str() {
-                "ANALYZING" => {
-                    // Still processing - continue polling
-                    // Check if we've exceeded the timeout
-                    if start_time.elapsed() >= timeout_duration {
-                        return Err(Error::UnknownError(format!(
-                            "Timed out waiting for result after {} seconds",
-                            timeout_seconds
-                        )));
-                    }
-
-                    sleep(Duration::from_secs(2)).await;
-                }
+                "ANALYZING" => sleep(Duration::from_millis(polling_interval)).await,
                 // Any other status means the analysis is done (COMPLETED, ERROR, etc.)
                 _ => {
                     return Ok(result);
                 }
             }
         }
+
+        Err(Error::UnknownError(format!(
+            "Timed out waiting for result after {} seconds",
+            (Instant::now() - start_time).as_secs()
+        )))
     }
 
     /// Process a batch of files concurrently
@@ -184,8 +183,8 @@ impl Client {
         }
 
         let max_concurrency = options.max_concurrency.unwrap_or(5);
-        let should_wait = options.wait.unwrap_or(true);
-        let timeout_seconds = options.timeout_seconds.unwrap_or(300);
+        let should_wait =
+            options.max_attempts.unwrap_or(0) > 0 && options.polling_interval.unwrap_or(0) > 0;
 
         // Upload all files concurrently with limited concurrency
         let uploads = future::join_all(
@@ -195,7 +194,6 @@ impl Client {
                     let chunk_futures = chunk.iter().map(|&path| {
                         let upload_options = UploadOptions {
                             file_path: path.to_string(),
-                            metadata: None,
                         };
                         self.upload(upload_options)
                     });
@@ -220,8 +218,8 @@ impl Client {
         // If waiting for results is enabled, get all results
         if should_wait {
             let get_options = GetResultOptions {
-                wait: Some(true),
-                timeout_seconds: Some(timeout_seconds),
+                max_attempts: options.max_attempts,
+                polling_interval: options.polling_interval,
             };
 
             // Get results concurrently with limited concurrency
@@ -266,15 +264,14 @@ impl Client {
         let upload_result = self
             .upload(UploadOptions {
                 file_path: file_path.to_string(),
-                metadata: None,
             })
             .await?;
 
         self.get_result(
             &upload_result.request_id,
             Some(GetResultOptions {
-                wait: Some(true),
-                timeout_seconds: Some(300),
+                max_attempts: Some(150),
+                polling_interval: Some(2000),
             }),
         )
         .await
@@ -495,7 +492,6 @@ mod tests {
         let result = client
             .upload(UploadOptions {
                 file_path: "non_existent_file.jpg".to_string(),
-                metadata: None,
             })
             .await;
 
@@ -556,8 +552,8 @@ mod tests {
             .get_result(
                 request_id,
                 Some(GetResultOptions {
-                    wait: Some(true),
-                    timeout_seconds: Some(5), // Short timeout for test
+                    max_attempts: Some(5),
+                    polling_interval: Some(1000), // Short timeout for test
                 }),
             )
             .await;
@@ -586,8 +582,8 @@ mod tests {
                 vec![],
                 BatchOptions {
                     max_concurrency: Some(2),
-                    wait: Some(true),
-                    timeout_seconds: Some(10),
+                    max_attempts: Some(10),
+                    polling_interval: Some(1000),
                 },
             )
             .await;
@@ -678,8 +674,8 @@ mod tests {
                 file_paths,
                 BatchOptions {
                     max_concurrency: Some(2),
-                    wait: Some(false),
-                    timeout_seconds: Some(10),
+                    max_attempts: None,
+                    polling_interval: None,
                 },
             )
             .await;

@@ -404,7 +404,6 @@ mod tests {
         let result = client
             .upload(UploadOptions {
                 file_path: file_path.to_str().unwrap().to_string(),
-                metadata: None,
             })
             .await;
 
@@ -486,7 +485,6 @@ mod tests {
         let result = client
             .upload(UploadOptions {
                 file_path: file_path.to_str().unwrap().to_string(),
-                metadata: None,
             })
             .await;
 
@@ -655,7 +653,6 @@ mod tests {
         let result = client
             .upload(UploadOptions {
                 file_path: file_path.to_str().unwrap().to_string(),
-                metadata: None,
             })
             .await;
 
@@ -717,7 +714,6 @@ mod tests {
         let result = client
             .upload(UploadOptions {
                 file_path: file_path.to_str().unwrap().to_string(),
-                metadata: None,
             })
             .await;
 
@@ -779,7 +775,6 @@ mod tests {
         let result = client
             .upload(UploadOptions {
                 file_path: file_path.to_str().unwrap().to_string(),
-                metadata: None,
             })
             .await;
 
@@ -827,7 +822,6 @@ mod tests {
         let result = client
             .upload(UploadOptions {
                 file_path: png_path.to_str().unwrap().to_string(),
-                metadata: None,
             })
             .await;
 
