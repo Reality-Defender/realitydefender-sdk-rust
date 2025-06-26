@@ -29,7 +29,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let upload_result = client
         .upload(UploadOptions {
             file_path: file_path.to_string(),
-            metadata: None,
         })
         .await?;
 
@@ -44,8 +43,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .get_result(
             &upload_result.request_id,
             Some(realitydefender::GetResultOptions {
-                wait: Some(true),
-                timeout_seconds: Some(60),
+                max_attempts: Some(30),
+                polling_interval: Some(2000),
             }),
         )
         .await?;
@@ -64,16 +63,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if !result.models.is_empty() {
         println!("\nModel-specific results:");
         for model in result.models {
-            if model.status != "NOT_APPLICABLE" {
-                println!(
-                    "- {}: Status: {}, Score: {}",
-                    model.name,
-                    model.status,
-                    model
-                        .score
-                        .map_or("N/A".to_string(), |s| format!("{:.4}", s))
-                );
-            }
+            println!(
+                "- {}: Status: {}, Score: {}",
+                model.name,
+                model.status,
+                model
+                    .score
+                    .map_or("N/A".to_string(), |s| format!("{:.4}", s))
+            );
         }
     }
 

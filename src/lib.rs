@@ -19,7 +19,6 @@
 //!     // Upload a file for analysis
 //!     let upload_result = client.upload(UploadOptions {
 //!         file_path: "./image.jpg".to_string(),
-//!         metadata: None,
 //!     }).await?;
 //!
 //!     // Get the analysis result

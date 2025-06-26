@@ -213,7 +213,6 @@ impl HttpClient {
     async fn handle_response<T: DeserializeOwned>(&self, response: Response) -> Result<T> {
         let status = response.status();
         let body = response.bytes().await?;
-
         match status {
             StatusCode::OK | StatusCode::CREATED => Ok(serde_json::from_slice(&body)?),
             StatusCode::UNAUTHORIZED => Err(Error::Unauthorized),
@@ -404,7 +403,6 @@ mod tests {
         let result = client
             .upload(UploadOptions {
                 file_path: file_path.to_str().unwrap().to_string(),
-                metadata: None,
             })
             .await;
 
@@ -486,7 +484,6 @@ mod tests {
         let result = client
             .upload(UploadOptions {
                 file_path: file_path.to_str().unwrap().to_string(),
-                metadata: None,
             })
             .await;
 
@@ -655,7 +652,6 @@ mod tests {
         let result = client
             .upload(UploadOptions {
                 file_path: file_path.to_str().unwrap().to_string(),
-                metadata: None,
             })
             .await;
 
@@ -717,7 +713,6 @@ mod tests {
         let result = client
             .upload(UploadOptions {
                 file_path: file_path.to_str().unwrap().to_string(),
-                metadata: None,
             })
             .await;
 
@@ -779,7 +774,6 @@ mod tests {
         let result = client
             .upload(UploadOptions {
                 file_path: file_path.to_str().unwrap().to_string(),
-                metadata: None,
             })
             .await;
 
@@ -827,7 +821,6 @@ mod tests {
         let result = client
             .upload(UploadOptions {
                 file_path: png_path.to_str().unwrap().to_string(),
-                metadata: None,
             })
             .await;
 
