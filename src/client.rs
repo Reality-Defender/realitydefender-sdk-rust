@@ -124,7 +124,7 @@ impl Client {
     ) -> Result<DetectionResult> {
         let start_time = Instant::now();
 
-        for i in 0..max_attempts {
+        for _ in 0..max_attempts {
             let result = self.fetch_result(request_id).await?;
 
             // Check if analysis is complete. The API uses "ANALYZING" while processing
