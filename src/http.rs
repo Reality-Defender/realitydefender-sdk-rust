@@ -213,7 +213,7 @@ impl HttpClient {
     async fn handle_response<T: DeserializeOwned>(&self, response: Response) -> Result<T> {
         let status = response.status();
         let body = response.bytes().await?;
-
+        println!("raw ------- {body:?}");
         match status {
             StatusCode::OK | StatusCode::CREATED => Ok(serde_json::from_slice(&body)?),
             StatusCode::UNAUTHORIZED => Err(Error::Unauthorized),

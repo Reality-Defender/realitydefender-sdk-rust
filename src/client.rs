@@ -152,8 +152,9 @@ impl Client {
     ) -> Result<AnalysisResult> {
         let start_time = Instant::now();
 
-        for _ in 0..max_attempts {
+        for i in 0..max_attempts {
             let result = self.fetch_result(request_id).await?;
+            println!("{i} - {result:?}");
 
             // Check if analysis is complete. The API uses "ANALYZING" while processing
             // and various status values when complete.
