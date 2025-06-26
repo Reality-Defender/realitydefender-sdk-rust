@@ -63,16 +63,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if !result.models.is_empty() {
         println!("\nModel-specific results:");
         for model in result.models {
-            if model.status != "NOT_APPLICABLE" {
-                println!(
-                    "- {}: Status: {}, Score: {}",
-                    model.name,
-                    model.status,
-                    model
-                        .score
-                        .map_or("N/A".to_string(), |s| format!("{:.4}", s))
-                );
-            }
+            println!(
+                "- {}: Status: {}, Score: {}",
+                model.name,
+                model.status,
+                model
+                    .score
+                    .map_or("N/A".to_string(), |s| format!("{:.4}", s))
+            );
         }
     }
 

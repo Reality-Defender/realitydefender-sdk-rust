@@ -65,6 +65,13 @@ pub struct GetResultOptions {
     pub polling_interval: Option<u64>,
 }
 
+#[derive(Deserialize, Debug, Clone, PartialEq)]
+#[serde(untagged)]
+pub enum FloatOrObject {
+    Float(f64),
+    Object(serde_json::Map<String, serde_json::Value>),
+}
+
 /// Model-specific detection results
 #[derive(Debug, Clone, Deserialize)]
 pub struct DetectionModel {
@@ -74,17 +81,13 @@ pub struct DetectionModel {
     /// Status of the detection (COMPLETED, PROCESSING, ERROR, etc.)
     pub status: String,
 
-    /// Detection score (0-1 range, normalized by the SDK, higher is more likely to be ARTIFICIAL)
-    pub score: Option<f64>,
-
     /// Raw prediction number from the model (may be on 0-100 scale, used internally for normalization)
     #[serde(rename = "predictionNumber")]
-    pub prediction_number: Option<f64>,
+    pub prediction_number: Option<FloatOrObject>,
 
     /// Normalized prediction number (typically 0-100 scale, used internally for normalization)
     #[serde(rename = "normalizedPredictionNumber")]
     pub normalized_prediction_number: Option<f64>,
-
     /// Final score for this model (typically 0-100 scale, used internally for normalization)
     #[serde(rename = "finalScore")]
     pub final_score: Option<f64>,
@@ -108,7 +111,7 @@ pub struct AnalysisResult {
     /// Overall detection score (0-1 range, normalized by the SDK, higher is more likely to be ARTIFICIAL)
     #[serde(default)]
     #[serde(rename = "finalScore")]
-    pub score: Option<f64>,
+    pub final_score: Option<f64>,
 
     /// Array of model-specific results
     #[serde(default)]
@@ -155,6 +158,34 @@ pub struct BatchOptions {
 
     /// How long to wait between attempts
     pub polling_interval: Option<u64>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct DetectionModelResult {
+    /// Name of the model
+    pub name: String,
+
+    /// Status of the detection (COMPLETED, PROCESSING, ERROR, etc.)
+    pub status: String,
+
+    /// Detection score (0-1 range, normalized by the SDK, higher is more likely to be ARTIFICIAL)
+    pub score: Option<f64>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct DetectionResult {
+    /// Unique identifier for the upload request
+    #[serde(rename = "requestId")]
+    pub request_id: String,
+
+    /// Status of the analysis (COMPLETED, PROCESSING, ERROR, etc.)
+    pub status: String,
+
+    /// Confidence score (0-1 range, null if processing)
+    pub score: Option<f64>,
+
+    /// Results from individual detection models
+    pub models: Vec<DetectionModelResult>,
 }
 
 #[cfg(test)]
@@ -222,7 +253,6 @@ mod tests {
         let json_data = json!({
             "name": "TestModel",
             "status": "COMPLETED",
-            "score": 0.85,
             "predictionNumber": 92.5,
             "normalizedPredictionNumber": 85.0,
             "finalScore": 80.0,
@@ -236,9 +266,6 @@ mod tests {
 
         assert_eq!(model.name, "TestModel");
         assert_eq!(model.status, "COMPLETED");
-        assert_eq!(model.score, Some(0.85));
-        assert_eq!(model.prediction_number, Some(92.5));
-        assert_eq!(model.normalized_prediction_number, Some(85.0));
         assert_eq!(model.final_score, Some(80.0));
 
         let info = model.info.unwrap();
@@ -251,17 +278,28 @@ mod tests {
         let json_data = json!({
             "requestId": "test-request-123",
             "overallStatus": "COMPLETED",
-            "finalScore": 0.75,
+            "finalScore": 75,
             "models": [
                 {
                     "name": "ModelA",
                     "status": "COMPLETED",
-                    "score": 0.8
+                    "finalScore": 80.0,
                 },
                 {
                     "name": "ModelB",
                     "status": "NOT_APPLICABLE"
-                }
+                },
+                {
+                  "name": "ModelC",
+                  "status": "NOT_APPLICABLE",
+                  "predictionNumber": {
+                    "reason": "relevance: no faces detected/faces too small",
+                    "decision": "NOT_EVALUATED"
+                  },
+                  "normalizedPredictionNumber": null,
+                  "rollingAvgNumber": null,
+                  "finalScore": null
+                },
             ],
             "info": {
                 "additionalInfo": "Test info"
@@ -281,14 +319,26 @@ mod tests {
 
         assert_eq!(result.request_id, "test-request-123");
         assert_eq!(result.status, "COMPLETED");
-        assert_eq!(result.score, Some(0.75));
-        assert_eq!(result.models.len(), 2);
+        assert_eq!(result.final_score, Some(75.0));
+        assert_eq!(result.models.len(), 3);
+
         assert_eq!(result.models[0].name, "ModelA");
         assert_eq!(result.models[0].status, "COMPLETED");
-        assert_eq!(result.models[0].score, Some(0.8));
+        assert_eq!(result.models[0].final_score, Some(80.0));
+        assert_eq!(result.models[0].prediction_number, None);
+
         assert_eq!(result.models[1].name, "ModelB");
         assert_eq!(result.models[1].status, "NOT_APPLICABLE");
-        assert_eq!(result.models[1].score, None);
+        assert_eq!(result.models[1].final_score, None);
+        assert_eq!(result.models[1].prediction_number, None);
+
+        assert_eq!(result.models[2].name, "ModelC");
+        assert_eq!(result.models[2].status, "NOT_APPLICABLE");
+        assert_eq!(result.models[2].final_score, None);
+        assert!(matches!(
+            result.models[2].prediction_number,
+            Some(FloatOrObject::Object { .. })
+        ));
 
         assert_eq!(result.created_at, Some("2023-01-01T12:00:00Z".to_string()));
         assert_eq!(result.updated_at, Some("2023-01-01T12:05:00Z".to_string()));
