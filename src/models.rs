@@ -108,7 +108,7 @@ pub struct AnalysisResult {
     #[serde(rename = "overallStatus")]
     pub status: String,
 
-    /// Overall detection score (0-1 range, normalized by the SDK, higher is more likely to be ARTIFICIAL)
+    /// Overall detection score (0-1 range, normalized by the SDK, higher is more likely to be MANIPULATED)
     #[serde(default)]
     #[serde(rename = "finalScore")]
     pub final_score: Option<f64>,
@@ -168,7 +168,7 @@ pub struct DetectionModelResult {
     /// Status of the detection (COMPLETED, PROCESSING, ERROR, etc.)
     pub status: String,
 
-    /// Detection score (0-1 range, normalized by the SDK, higher is more likely to be ARTIFICIAL)
+    /// Detection score (0-1 range, normalized by the SDK, higher is more likely to be MANIPULATED)
     pub score: Option<f64>,
 }
 

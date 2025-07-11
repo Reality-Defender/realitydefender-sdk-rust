@@ -90,8 +90,7 @@ impl HttpClient {
         if !status.is_success() {
             let body = response.text().await?;
             return Err(Error::UploadFailed(format!(
-                "Failed to upload to presigned URL. Status: {} Body: {}",
-                status, body
+                "Failed to upload to presigned URL. Status: {status} Body: {body}"
             )));
         }
 
@@ -103,7 +102,7 @@ impl HttpClient {
         // 1. Get file name
         let path = Path::new(file_path);
         if !path.exists() {
-            return Err(Error::InvalidFile(format!("File not found: {}", file_path)));
+            return Err(Error::InvalidFile(format!("File not found: {file_path}")));
         }
 
         let file_name = path
@@ -127,7 +126,7 @@ impl HttpClient {
             let std_file_content = std::fs::read(path)?;
 
             if std_file_content.is_empty() {
-                return Err(Error::InvalidFile(format!("File is empty: {}", file_path)));
+                return Err(Error::InvalidFile(format!("File is empty: {file_path}")));
             }
 
             // Use the content read by std::fs instead
@@ -231,10 +230,10 @@ impl HttpClient {
                         if let Some(msg) = error_resp.get("error").and_then(|e| e.as_str()) {
                             msg.to_string()
                         } else {
-                            format!("Unknown error (HTTP {})", status)
+                            format!("Unknown error (HTTP {status})")
                         }
                     } else {
-                        format!("Unknown error (HTTP {})", status)
+                        format!("Unknown error (HTTP {status})")
                     };
 
                 Err(Error::UnknownError(error_msg))
