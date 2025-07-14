@@ -71,9 +71,9 @@ impl Client {
     /// Normalize scores from 0-100 to 0-1 range
     fn normalize_scores(&self, result: &AnalysisResult) -> DetectionResult {
         let mut detection_result = DetectionResult {
-            // Replace FAKE with ARTIFICIAL in overall status
+            // Replace FAKE with MANIPULATED in overall status
             status: if result.status == "FAKE" {
-                "ARTIFICIAL".to_string()
+                "MANIPULATED".to_string()
             } else {
                 result.status.clone()
             },
@@ -101,7 +101,7 @@ impl Client {
             .map(|model| DetectionModelResult {
                 name: model.name.clone(),
                 status: if model.status == "FAKE" {
-                    "ARTIFICIAL".to_string()
+                    "MANIPULATED".to_string()
                 } else {
                     model.status.clone()
                 },
