@@ -3,7 +3,7 @@
 //! The Reality Defender SDK provides tools for detecting deepfakes and manipulated media
 //! through the Reality Defender API.
 //!
-//! ## Example
+//! ## Basic Usage Example
 //!
 //! ```no_run
 //! use realitydefender::{Client, Config, UploadOptions};
@@ -32,6 +32,44 @@
 //!     Ok(())
 //! }
 //! ```
+//!
+//! ## Getting Results with Pagination
+//!
+//! ```no_run
+//! use realitydefender::{Client, Config, GetResultsOptions};
+//!
+//! #[tokio::main]
+//! async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//!     let client = Client::new(Config {
+//!         api_key: std::env::var("REALITY_DEFENDER_API_KEY")?,
+//!         ..Default::default()
+//!     })?;
+//!
+//!     // Get first page of results with filtering
+//!     let options = GetResultsOptions {
+//!         page_number: Some(0),
+//!         size: Some(10),
+//!         name: Some("test".to_string()),
+//!         start_date: Some("2024-01-01".to_string()),
+//!         end_date: Some("2024-12-31".to_string()),
+//!         ..Default::default()
+//!     };
+//!
+//!     let results = client.get_results(Some(options)).await?;
+//!     
+//!     println!("Total Results: {}", results.total_items);
+//!     println!("Current Page: {} of {}", results.current_page + 1, results.total_pages);
+//!     
+//!     for result in &results.items {
+//!         println!("Request ID: {}, Status: {}", result.request_id, result.status);
+//!         if let Some(score) = result.score {
+//!             println!("Score: {:.4}", score);
+//!         }
+//!     }
+//!
+//!     Ok(())
+//! }
+//! ```
 
 mod client;
 mod config;
@@ -45,6 +83,7 @@ pub use client::Client;
 pub use config::Config;
 pub use error::{Error, Result};
 pub use models::{
-    AnalysisResult, BatchOptions, DetectionModel, GetResultOptions, ResultsSummary, UploadOptions,
-    UploadResult,
+    AnalysisResult, BatchOptions, DetectionModel, DetectionResult, DetectionResultList, 
+    FormattedDetectionResultList, GetResultOptions, GetResultsOptions, ResultsSummary, 
+    UploadOptions, UploadResult,
 };

@@ -188,6 +188,81 @@ pub struct DetectionResult {
     pub models: Vec<DetectionModelResult>,
 }
 
+/// Options for getting results with pagination and filtering
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct GetResultsOptions {
+    /// Page number (0-based)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub page_number: Option<u32>,
+
+    /// Number of items per page
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub size: Option<u32>,
+
+    /// Filter by name
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+
+    /// Start date filter (YYYY-MM-DD format)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub start_date: Option<String>,
+
+    /// End date filter (YYYY-MM-DD format)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub end_date: Option<String>,
+
+    /// Maximum number of attempts to get results
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_attempts: Option<u64>,
+
+    /// How long to wait between attempts
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub polling_interval: Option<u64>,
+}
+
+/// Paginated list of detection results
+#[derive(Debug, Clone, Deserialize)]
+pub struct DetectionResultList {
+    /// Total number of items across all pages
+    #[serde(rename = "totalItems")]
+    pub total_items: u32,
+
+    /// Total number of pages
+    #[serde(rename = "totalPages")]
+    pub total_pages: u32,
+
+    /// Current page number (0-based)
+    #[serde(rename = "currentPage")]
+    pub current_page: u32,
+
+    /// Number of items on current page
+    #[serde(rename = "currentPageItemsCount")]
+    pub current_page_items_count: u32,
+
+    /// List of detection results for this page
+    #[serde(rename = "mediaList")]
+    pub items: Vec<AnalysisResult>,
+}
+
+/// Formatted detection result list for user consumption
+#[derive(Debug, Clone)]
+pub struct FormattedDetectionResultList {
+    /// Total number of items across all pages
+    pub total_items: u32,
+
+    /// Total number of pages
+    pub total_pages: u32,
+
+    /// Current page number (0-based)
+    pub current_page: u32,
+
+    /// Number of items on current page
+    pub current_page_items_count: u32,
+
+    /// List of formatted detection results for this page
+    pub items: Vec<DetectionResult>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

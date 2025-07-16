@@ -2,8 +2,8 @@ use crate::config::Config;
 use crate::error::{Error, Result};
 use crate::http::{api_paths, HttpClient};
 use crate::models::{
-    AnalysisResult, BatchOptions, DetectionModelResult, DetectionResult, FloatOrObject,
-    GetResultOptions, UploadOptions, UploadResult,
+    AnalysisResult, BatchOptions, DetectionModelResult, DetectionResult, DetectionResultList, FloatOrObject,
+    FormattedDetectionResultList, GetResultOptions, GetResultsOptions, UploadOptions, UploadResult,
 };
 use futures::future;
 use std::time::{Duration, Instant};
@@ -224,6 +224,93 @@ impl Client {
                     models: Vec::new(),
                 })
                 .collect())
+        }
+    }
+
+    /// Get a paginated list of detection results with optional filters
+    pub async fn get_results(
+        &self,
+        options: Option<GetResultsOptions>,
+    ) -> Result<FormattedDetectionResultList> {
+        let opts = options.unwrap_or_default();
+        let should_wait = opts.max_attempts.unwrap_or(0) > 0 && opts.polling_interval.unwrap_or(0) > 0;
+
+        if should_wait {
+            self.wait_for_results(opts).await
+        } else {
+            self.fetch_results(opts).await
+        }
+    }
+
+    /// Fetch results without waiting
+    async fn fetch_results(&self, options: GetResultsOptions) -> Result<FormattedDetectionResultList> {
+        let page_number = options.page_number.unwrap_or(0);
+        let endpoint = format!("{}/{}", api_paths::ALL_MEDIA_RESULTS, page_number);
+        
+        let mut params = Vec::new();
+        
+        if let Some(size) = options.size {
+            params.push(("size", size.to_string()));
+        }
+        if let Some(ref name) = options.name {
+            params.push(("name", name.to_string()));
+        }
+        if let Some(ref start_date) = options.start_date {
+            params.push(("startDate", start_date.to_string()));
+        }
+        if let Some(ref end_date) = options.end_date {
+            params.push(("endDate", end_date.to_string()));
+        }
+
+        // Convert to string references for the API call
+        let param_refs: Vec<(&str, &str)> = params.iter().map(|(k, v)| (*k, v.as_str())).collect();
+        
+        let raw_result = self.http_client.get_with_params::<DetectionResultList>(&endpoint, &param_refs).await?;
+        
+        // Convert to formatted result
+        Ok(self.format_results_list(&raw_result))
+    }
+
+    /// Wait for results with retry logic
+    async fn wait_for_results(&self, options: GetResultsOptions) -> Result<FormattedDetectionResultList> {
+        let max_attempts = options.max_attempts.unwrap_or(5);
+        let polling_interval = options.polling_interval.unwrap_or(2000);
+        
+        let start_time = Instant::now();
+
+        for _ in 0..max_attempts {
+            let result = self.fetch_results(options.clone()).await?;
+            
+            // Check if any results are still analyzing
+            let still_analyzing = result.items.iter().any(|item| item.status == "ANALYZING");
+            
+            if !still_analyzing {
+                return Ok(result);
+            }
+            
+            sleep(Duration::from_millis(polling_interval)).await;
+        }
+
+        Err(Error::UnknownError(format!(
+            "Timed out waiting for results after {} seconds",
+            (Instant::now() - start_time).as_secs()
+        )))
+    }
+
+    /// Format raw results list into user-friendly format
+    fn format_results_list(&self, raw_result: &DetectionResultList) -> FormattedDetectionResultList {
+        let formatted_items = raw_result
+            .items
+            .iter()
+            .map(|item| self.normalize_scores(item))
+            .collect();
+
+        FormattedDetectionResultList {
+            total_items: raw_result.total_items,
+            total_pages: raw_result.total_pages,
+            current_page: raw_result.current_page,
+            current_page_items_count: raw_result.current_page_items_count,
+            items: formatted_items,
         }
     }
 
