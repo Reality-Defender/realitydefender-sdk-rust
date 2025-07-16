@@ -35,7 +35,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         size: Some(5),
         ..Default::default()
     };
-    
+
     match client.get_results(Some(options)).await {
         Ok(results) => {
             print_results(&results);
@@ -54,7 +54,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         end_date: Some("2025-12-31".to_string()),
         ..Default::default()
     };
-    
+
     match client.get_results(Some(date_options)).await {
         Ok(results) => {
             print_results(&results);
@@ -72,7 +72,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         name: Some("test".to_string()),
         ..Default::default()
     };
-    
+
     match client.get_results(Some(name_options)).await {
         Ok(results) => {
             print_results(&results);
@@ -91,7 +91,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         polling_interval: Some(2000), // 2 seconds
         ..Default::default()
     };
-    
+
     match client.get_results(Some(polling_options)).await {
         Ok(results) => {
             print_results(&results);
@@ -106,7 +106,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 fn print_results(results: &realitydefender::FormattedDetectionResultList) {
     println!("Total Results: {}", results.total_items);
-    println!("Current Page: {} of {}", results.current_page + 1, results.total_pages);
+    println!(
+        "Current Page: {} of {}",
+        results.current_page + 1,
+        results.total_pages
+    );
     println!("Results on this page: {}", results.current_page_items_count);
 
     if !results.items.is_empty() {
@@ -136,4 +140,3 @@ fn print_results(results: &realitydefender::FormattedDetectionResultList) {
         println!("\nNo results found.");
     }
 }
-
