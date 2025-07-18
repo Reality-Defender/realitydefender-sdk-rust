@@ -12,6 +12,8 @@ pub mod api_paths {
     pub const SIGNED_URL: &str = "/api/files/aws-presigned";
     /// Path for retrieving media results
     pub const MEDIA_RESULT: &str = "/api/media/users";
+    /// Path for retrieving all media results with pagination
+    pub const ALL_MEDIA_RESULTS: &str = "/api/v2/media/users/pages";
 }
 
 /// HTTP client for making API requests
@@ -41,6 +43,27 @@ impl HttpClient {
         let request = self
             .client
             .get(&url)
+            .header("X-API-KEY", &self.config.api_key)
+            .header("Accept", "application/json")
+            .header("Accept-Encoding", "gzip")
+            .build()?;
+
+        let response = self.client.execute(request).await?;
+        self.handle_response(response).await
+    }
+
+    /// Make a GET request with query parameters to the specified endpoint
+    pub async fn get_with_params<T: DeserializeOwned>(
+        &self,
+        endpoint: &str,
+        params: &[(&str, &str)],
+    ) -> Result<T> {
+        let url = format!("{}{}", self.config.get_base_url(), endpoint);
+
+        let request = self
+            .client
+            .get(&url)
+            .query(params)
             .header("X-API-KEY", &self.config.api_key)
             .header("Accept", "application/json")
             .header("Accept-Encoding", "gzip")
