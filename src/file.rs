@@ -1,4 +1,3 @@
-
 #[derive(Debug)]
 pub struct FileTypeConfig {
     pub extensions: &'static [&'static str],

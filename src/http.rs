@@ -941,13 +941,16 @@ mod tests {
             .mock("POST", "/api/files/aws-presigned")
             .with_status(200)
             .with_header("content-type", "application/json")
-            .with_body(json!({
-                "code": "success",
-                "errno": 0,
-                "requestId": "test-id",
-                "mediaId": "test-media",
-                "response": {"signedUrl": format!("{}/upload", server.url())}
-            }).to_string())
+            .with_body(
+                json!({
+                    "code": "success",
+                    "errno": 0,
+                    "requestId": "test-id",
+                    "mediaId": "test-media",
+                    "response": {"signedUrl": format!("{}/upload", server.url())}
+                })
+                .to_string(),
+            )
             .create_async()
             .await;
 

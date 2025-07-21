@@ -74,10 +74,10 @@
 mod client;
 mod config;
 mod error;
+mod file;
 mod http;
 mod models;
 mod utils;
-mod file;
 
 // Re-exports
 pub use client::Client;
