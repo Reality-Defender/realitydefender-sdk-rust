@@ -77,6 +77,7 @@ mod error;
 mod http;
 mod models;
 mod utils;
+mod file;
 
 // Re-exports
 pub use client::Client;
