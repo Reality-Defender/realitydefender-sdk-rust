@@ -1,5 +1,6 @@
 use crate::config::Config;
 use crate::error::{Error, Result};
+use crate::file::SUPPORTED_FILE_TYPES;
 use reqwest::{Client as ReqwestClient, ClientBuilder, Response, StatusCode};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -126,6 +127,24 @@ impl HttpClient {
         let path = Path::new(file_path);
         if !path.exists() {
             return Err(Error::InvalidFile(format!("File not found: {file_path}")));
+        }
+
+        let file_extension = path
+            .extension()
+            .ok_or_else(|| Error::InvalidFile("Invalid file name".to_string()))?;
+        let supported_file_type = SUPPORTED_FILE_TYPES
+            .iter()
+            .find(|x| x.extensions.contains(&file_extension.to_str().unwrap()));
+
+        if supported_file_type.is_none() {
+            return Err(Error::InvalidFile(format!(
+                "Unsupported file type: {file_path}"
+            )));
+        }
+
+        let file_size = path.metadata()?.len();
+        if file_size > supported_file_type.unwrap().size_limit {
+            return Err(Error::InvalidFile(format!("File too large: {file_path}")));
         }
 
         let file_name = path
@@ -852,5 +871,134 @@ mod tests {
             "Failed to upload PNG file: {:?}",
             result.err()
         );
+    }
+
+    #[tokio::test]
+    async fn test_unsupported_file_extension() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("test.xyz");
+        let mut file = File::create(&file_path).unwrap();
+        file.write_all(b"test data").unwrap();
+
+        let config = Config {
+            api_key: "test_api_key".to_string(),
+            ..Default::default()
+        };
+        let client = Client::new(config).unwrap();
+
+        let result = client
+            .upload(UploadOptions {
+                file_path: file_path.to_str().unwrap().to_string(),
+            })
+            .await;
+
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            Error::InvalidFile(msg) => assert!(msg.contains("Unsupported file type")),
+            err => panic!("Expected InvalidFile error, got: {:?}", err),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_file_size_exceeds_limit() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("large.jpg");
+        let mut file = File::create(&file_path).unwrap();
+
+        // Create a file larger than 50MB (image limit)
+        let large_data = vec![0u8; 52428801]; // 50MB + 1 byte
+        file.write_all(&large_data).unwrap();
+
+        let config = Config {
+            api_key: "test_api_key".to_string(),
+            ..Default::default()
+        };
+        let client = Client::new(config).unwrap();
+
+        let result = client
+            .upload(UploadOptions {
+                file_path: file_path.to_str().unwrap().to_string(),
+            })
+            .await;
+
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            Error::InvalidFile(msg) => assert!(msg.contains("File too large")),
+            err => panic!("Expected InvalidFile error, got: {:?}", err),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_supported_file_extension_within_limit() {
+        let mut server = mockito::Server::new_async().await;
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("small.jpg");
+        let mut file = File::create(&file_path).unwrap();
+        file.write_all(b"small image").unwrap();
+
+        // Mock presigned URL and upload
+        let _m1 = server
+            .mock("POST", "/api/files/aws-presigned")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(
+                json!({
+                    "code": "success",
+                    "errno": 0,
+                    "requestId": "test-id",
+                    "mediaId": "test-media",
+                    "response": {"signedUrl": format!("{}/upload", server.url())}
+                })
+                .to_string(),
+            )
+            .create_async()
+            .await;
+
+        let _m2 = server
+            .mock("PUT", "/upload")
+            .with_status(200)
+            .create_async()
+            .await;
+
+        let config = Config {
+            api_key: "test_api_key".to_string(),
+            base_url: Some(server.url()),
+            ..Default::default()
+        };
+        let client = Client::new(config).unwrap();
+
+        let result = client
+            .upload(UploadOptions {
+                file_path: file_path.to_str().unwrap().to_string(),
+            })
+            .await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_file_without_extension() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("no_extension");
+        let mut file = File::create(&file_path).unwrap();
+        file.write_all(b"test data").unwrap();
+
+        let config = Config {
+            api_key: "test_api_key".to_string(),
+            ..Default::default()
+        };
+        let client = Client::new(config).unwrap();
+
+        let result = client
+            .upload(UploadOptions {
+                file_path: file_path.to_str().unwrap().to_string(),
+            })
+            .await;
+
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            Error::InvalidFile(msg) => assert!(msg.contains("Invalid file name")),
+            err => panic!("Expected InvalidFile error, got: {:?}", err),
+        }
     }
 }

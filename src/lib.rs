@@ -74,6 +74,7 @@
 mod client;
 mod config;
 mod error;
+mod file;
 mod http;
 mod models;
 mod utils;
