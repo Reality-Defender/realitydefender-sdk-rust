@@ -73,10 +73,7 @@ mod tests {
                 Error::Unauthorized("Authentication failed: Invalid API key".to_string()),
                 "Authentication failed: Invalid API key",
             ),
-            (
-                Error::NotFound,
-                "Resource not found",
-            ),
+            (Error::NotFound, "Resource not found"),
             (
                 Error::ServerError("internal error".to_string()),
                 "Server error: internal error",

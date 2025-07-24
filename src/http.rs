@@ -1,12 +1,12 @@
 use crate::config::Config;
 use crate::error::{Error, Result};
 use crate::file::SUPPORTED_FILE_TYPES;
+use crate::models::BaseResponse;
 use reqwest::{Client as ReqwestClient, ClientBuilder, Response, StatusCode};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::path::Path;
 use std::time::Duration;
-use crate::models::BaseResponse;
 
 /// Constants for API paths
 pub mod api_paths {
@@ -267,7 +267,7 @@ impl HttpClient {
                 BaseResponse {
                     code: "UNKNOWN".to_string(),
                     response: format!("Unknown error (HTTP {status})"),
-                    errno: -1
+                    errno: -1,
                 }
             };
 
@@ -278,19 +278,19 @@ impl HttpClient {
                 } else {
                     Err(Error::InvalidRequest(response.response))
                 }
-            },
-            StatusCode::UNAUTHORIZED => Err(Error::Unauthorized("Authentication failed: Invalid API key".to_string())),
-            StatusCode::NOT_FOUND => Err(Error::NotFound),
-            StatusCode::INTERNAL_SERVER_ERROR => {
-                Err(Error::ServerError(response.response))
             }
+            StatusCode::UNAUTHORIZED => Err(Error::Unauthorized(
+                "Authentication failed: Invalid API key".to_string(),
+            )),
+            StatusCode::NOT_FOUND => Err(Error::NotFound),
+            StatusCode::INTERNAL_SERVER_ERROR => Err(Error::ServerError(response.response)),
             StatusCode::FORBIDDEN => {
                 // Enhanced error for 403 Forbidden
-                Err(Error::Unauthorized("Authentication failed: key does not have access to this resource".to_string()))
+                Err(Error::Unauthorized(
+                    "Authentication failed: key does not have access to this resource".to_string(),
+                ))
             }
-            _ => {
-                Err(Error::UnknownError(response.response))
-            }
+            _ => Err(Error::UnknownError(response.response)),
         }
     }
 }
@@ -1021,7 +1021,9 @@ mod tests {
             .mock("GET", "/api/media/users/test-bad-request")
             .with_status(400)
             .with_header("content-type", "application/json")
-            .with_body(r#"{"code": "error", "errno": 400, "response": "Invalid request parameters"}"#)
+            .with_body(
+                r#"{"code": "error", "errno": 400, "response": "Invalid request parameters"}"#,
+            )
             .create_async()
             .await;
 
@@ -1065,9 +1067,11 @@ mod tests {
         };
         let client = Client::new(config).unwrap();
 
-        let result = client.upload(UploadOptions {
-            file_path: file_path.to_str().unwrap().to_string(),
-        }).await;
+        let result = client
+            .upload(UploadOptions {
+                file_path: file_path.to_str().unwrap().to_string(),
+            })
+            .await;
 
         assert!(result.is_err());
         match result.unwrap_err() {
