@@ -438,7 +438,7 @@ mod tests {
 
         let result = client.get_result(request_id, None).await.unwrap();
 
-        assert_eq!(result.request_id, request_id);
+        assert_eq!(result.request_id, request_qwid);
         assert_eq!(result.status, "COMPLETED");
         assert_eq!(result.score, Some(0.85));
         assert_eq!(result.models.len(), 2);

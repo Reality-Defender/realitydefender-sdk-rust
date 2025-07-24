@@ -12,12 +12,12 @@ pub enum Error {
     InvalidConfig(String),
 
     /// Authentication failure
-    #[error("Authentication failed: Invalid API key")]
-    Unauthorized,
+    #[error("{0}")]
+    Unauthorized(String),
 
     /// Resource not found
-    #[error("Resource not found: {0}")]
-    NotFound(String),
+    #[error("Resource not found")]
+    NotFound,
 
     /// Server error from the API
     #[error("Server error: {0}")]
@@ -70,12 +70,12 @@ mod tests {
                 "Invalid configuration: missing api key",
             ),
             (
-                Error::Unauthorized,
+                Error::Unauthorized("Authentication failed: Invalid API key".to_string()),
                 "Authentication failed: Invalid API key",
             ),
             (
-                Error::NotFound("request id".to_string()),
-                "Resource not found: request id",
+                Error::NotFound,
+                "Resource not found",
             ),
             (
                 Error::ServerError("internal error".to_string()),

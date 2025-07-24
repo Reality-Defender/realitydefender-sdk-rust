@@ -6,6 +6,7 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::path::Path;
 use std::time::Duration;
+use crate::models::BaseResponse;
 
 /// Constants for API paths
 pub mod api_paths {
@@ -254,31 +255,41 @@ impl HttpClient {
     async fn handle_response<T: DeserializeOwned>(&self, response: Response) -> Result<T> {
         let status = response.status();
         let body = response.bytes().await?;
+
+        if status == StatusCode::OK || status == StatusCode::CREATED {
+            return Ok(serde_json::from_slice(&body)?);
+        }
+
+        let response: BaseResponse =
+            if let Ok(base_response) = serde_json::from_slice::<BaseResponse>(&body) {
+                base_response
+            } else {
+                BaseResponse {
+                    code: "UNKNOWN".to_string(),
+                    response: format!("Unknown error (HTTP {status})"),
+                    errno: -1
+                }
+            };
+
         match status {
-            StatusCode::OK | StatusCode::CREATED => Ok(serde_json::from_slice(&body)?),
-            StatusCode::UNAUTHORIZED => Err(Error::Unauthorized),
-            StatusCode::NOT_FOUND => Err(Error::NotFound("Resource not found".to_string())),
+            StatusCode::BAD_REQUEST => {
+                if response.code == "free-tier-not-allowed" {
+                    Err(Error::Unauthorized(response.response))
+                } else {
+                    Err(Error::InvalidRequest(response.response))
+                }
+            },
+            StatusCode::UNAUTHORIZED => Err(Error::Unauthorized("Authentication failed: Invalid API key".to_string())),
+            StatusCode::NOT_FOUND => Err(Error::NotFound),
             StatusCode::INTERNAL_SERVER_ERROR => {
-                Err(Error::ServerError("Server error".to_string()))
+                Err(Error::ServerError(response.response))
             }
             StatusCode::FORBIDDEN => {
                 // Enhanced error for 403 Forbidden
-                Err(Error::Unauthorized)
+                Err(Error::Unauthorized("Authentication failed: key does not have access to this resource".to_string()))
             }
             _ => {
-                // Try to parse error message from response
-                let error_msg =
-                    if let Ok(error_resp) = serde_json::from_slice::<serde_json::Value>(&body) {
-                        if let Some(msg) = error_resp.get("error").and_then(|e| e.as_str()) {
-                            msg.to_string()
-                        } else {
-                            format!("Unknown error (HTTP {status})")
-                        }
-                    } else {
-                        format!("Unknown error (HTTP {status})")
-                    };
-
-                Err(Error::UnknownError(error_msg))
+                Err(Error::UnknownError(response.response))
             }
         }
     }
@@ -345,7 +356,7 @@ mod tests {
             .mock("GET", "/api/media/users/test-request")
             .with_status(401)
             .with_header("content-type", "application/json")
-            .with_body(r#"{"error": "Unauthorized access"}"#)
+            .with_body(r#"{"response": "Unauthorized access"}"#)
             .create_async()
             .await;
 
@@ -363,7 +374,7 @@ mod tests {
         // Verify error
         assert!(result.is_err());
         match result.unwrap_err() {
-            Error::Unauthorized => {} // Expected error
+            Error::Unauthorized(..) => {} // Expected error
             err => panic!("Unexpected error: {:?}", err),
         }
 
@@ -372,7 +383,7 @@ mod tests {
             .mock("GET", "/api/media/users/not-found")
             .with_status(404)
             .with_header("content-type", "application/json")
-            .with_body(r#"{"error": "Resource not found"}"#)
+            .with_body(r#"{"response": "Resource not found"}"#)
             .create_async()
             .await;
 
@@ -382,7 +393,7 @@ mod tests {
         // Verify error
         assert!(result.is_err());
         match result.unwrap_err() {
-            Error::NotFound(_) => {} // Expected error
+            Error::NotFound => {} // Expected error
             err => panic!("Unexpected error: {:?}", err),
         }
     }
@@ -592,7 +603,7 @@ mod tests {
         // Verify error
         assert!(result.is_err());
         match result.unwrap_err() {
-            Error::Unauthorized => {} // Expected error (403 maps to Unauthorized)
+            Error::Unauthorized(..) => {} // Expected error (403 maps to Unauthorized)
             err => panic!("Unexpected error: {:?}", err),
         }
     }
@@ -606,7 +617,7 @@ mod tests {
             .mock("GET", "/api/media/users/test-unknown-error")
             .with_status(400)
             .with_header("content-type", "application/json")
-            .with_body(r#"{"error": "Custom error message"}"#)
+            .with_body(r#"{"code": "custom-code", "errno": 0, "response": "Custom error message", "some": "other-data"}"#)
             .create_async()
             .await;
 
@@ -624,7 +635,7 @@ mod tests {
         // Verify error
         assert!(result.is_err());
         match result.unwrap_err() {
-            Error::UnknownError(msg) => {
+            Error::InvalidRequest(msg) => {
                 assert_eq!(msg, "Custom error message");
             }
             err => panic!("Unexpected error: {:?}", err),
@@ -999,6 +1010,97 @@ mod tests {
         match result.unwrap_err() {
             Error::InvalidFile(msg) => assert!(msg.contains("Invalid file name")),
             err => panic!("Expected InvalidFile error, got: {:?}", err),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_bad_request_error_handling() {
+        let mut server = mockito::Server::new_async().await;
+
+        let _m = server
+            .mock("GET", "/api/media/users/test-bad-request")
+            .with_status(400)
+            .with_header("content-type", "application/json")
+            .with_body(r#"{"code": "error", "errno": 400, "response": "Invalid request parameters"}"#)
+            .create_async()
+            .await;
+
+        let config = Config {
+            api_key: "test_api_key".to_string(),
+            base_url: Some(server.url()),
+            ..Default::default()
+        };
+        let client = Client::new(config).unwrap();
+
+        let result = client.get_result("test-bad-request", None).await;
+
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            Error::InvalidRequest(_) => {} // Expected error
+            err => panic!("Unexpected error: {:?}", err),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_upload_bad_request_error() {
+        let mut server = mockito::Server::new_async().await;
+
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("test.jpg");
+        let mut file = File::create(&file_path).unwrap();
+        file.write_all(b"test data").unwrap();
+
+        let _m = server
+            .mock("POST", "/api/files/aws-presigned")
+            .with_status(400)
+            .with_header("content-type", "application/json")
+            .with_body(r#"{"code": "error", "errno": 400, "response": "Invalid file format"}"#)
+            .create_async()
+            .await;
+
+        let config = Config {
+            api_key: "test_api_key".to_string(),
+            base_url: Some(server.url()),
+            ..Default::default()
+        };
+        let client = Client::new(config).unwrap();
+
+        let result = client.upload(UploadOptions {
+            file_path: file_path.to_str().unwrap().to_string(),
+        }).await;
+
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            Error::InvalidRequest(_) | Error::UploadFailed(_) => {} // Either is acceptable
+            err => panic!("Unexpected error: {:?}", err),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_free_tier_not_allowed_error() {
+        let mut server = mockito::Server::new_async().await;
+
+        let _m = server
+            .mock("GET", "/api/media/users/test-free-tier")
+            .with_status(400)
+            .with_header("content-type", "application/json")
+            .with_body(r#"{"code": "free-tier-not-allowed", "errno": 400, "response": "This feature is not available in the free tier"}"#)
+            .create_async()
+            .await;
+
+        let config = Config {
+            api_key: "test_api_key".to_string(),
+            base_url: Some(server.url()),
+            ..Default::default()
+        };
+        let client = Client::new(config).unwrap();
+
+        let result = client.get_result("test-free-tier", None).await;
+
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            Error::Unauthorized(_) => {} // Expected - free tier restrictions are auth-related
+            err => panic!("Unexpected error: {:?}", err),
         }
     }
 }
