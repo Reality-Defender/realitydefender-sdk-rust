@@ -20,7 +20,7 @@ pub enum Error {
     NotFound,
 
     /// Server error from the API
-    #[error("Server error: {0}")]
+    #[error("API error: {0}")]
     ServerError(String),
 
     /// Invalid file
@@ -76,7 +76,7 @@ mod tests {
             (Error::NotFound, "Resource not found"),
             (
                 Error::ServerError("internal error".to_string()),
-                "Server error: internal error",
+                "API error: internal error",
             ),
             (
                 Error::InvalidFile("file not found".to_string()),
