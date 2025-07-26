@@ -1,5 +1,21 @@
 use serde::{Deserialize, Serialize};
 
+/// Base API response
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct BaseResponse {
+    /// Status code from the API
+    #[serde(rename = "code")]
+    pub code: String,
+
+    /// Error number (0 if successful)
+    #[serde(rename = "errno")]
+    pub errno: i32,
+
+    /// Response message.
+    #[serde(rename = "response")]
+    pub response: String,
+}
+
 /// Options for uploading a file
 #[derive(Debug, Clone, Serialize)]
 pub struct UploadOptions {
