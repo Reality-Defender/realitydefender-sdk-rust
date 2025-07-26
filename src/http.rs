@@ -273,15 +273,15 @@ impl HttpClient {
 
         match status {
             StatusCode::BAD_REQUEST => {
-                if response.code == "free-tier-not-allowed" || response.code == "upload-limit-reached" {
+                if response.code == "free-tier-not-allowed"
+                    || response.code == "upload-limit-reached"
+                {
                     Err(Error::Unauthorized(response.response))
                 } else {
                     Err(Error::InvalidRequest(response.response))
                 }
             }
-            StatusCode::UNAUTHORIZED => Err(Error::Unauthorized(
-                "Invalid API key".to_string(),
-            )),
+            StatusCode::UNAUTHORIZED => Err(Error::Unauthorized("Invalid API key".to_string())),
             StatusCode::NOT_FOUND => Err(Error::NotFound),
             _ => Err(Error::ServerError(response.response)),
         }
