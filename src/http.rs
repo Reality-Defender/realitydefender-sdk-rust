@@ -273,24 +273,17 @@ impl HttpClient {
 
         match status {
             StatusCode::BAD_REQUEST => {
-                if response.code == "free-tier-not-allowed" {
+                if response.code == "free-tier-not-allowed" || response.code == "upload-limit-reached" {
                     Err(Error::Unauthorized(response.response))
                 } else {
                     Err(Error::InvalidRequest(response.response))
                 }
             }
             StatusCode::UNAUTHORIZED => Err(Error::Unauthorized(
-                "Authentication failed: Invalid API key".to_string(),
+                "Invalid API key".to_string(),
             )),
             StatusCode::NOT_FOUND => Err(Error::NotFound),
-            StatusCode::INTERNAL_SERVER_ERROR => Err(Error::ServerError(response.response)),
-            StatusCode::FORBIDDEN => {
-                // Enhanced error for 403 Forbidden
-                Err(Error::Unauthorized(
-                    "Authentication failed: key does not have access to this resource".to_string(),
-                ))
-            }
-            _ => Err(Error::UnknownError(response.response)),
+            _ => Err(Error::ServerError(response.response)),
         }
     }
 }
@@ -585,7 +578,7 @@ mod tests {
             .mock("GET", "/api/media/users/test-forbidden")
             .with_status(403)
             .with_header("content-type", "application/json")
-            .with_body(r#"{"error": "Forbidden access"}"#)
+            .with_body(r#"{"response": "Forbidden access"}"#)
             .create_async()
             .await;
 
@@ -603,7 +596,7 @@ mod tests {
         // Verify error
         assert!(result.is_err());
         match result.unwrap_err() {
-            Error::Unauthorized(..) => {} // Expected error (403 maps to Unauthorized)
+            Error::ServerError(..) => {} // Expected error (403 maps to Unauthorized)
             err => panic!("Unexpected error: {:?}", err),
         }
     }
@@ -656,7 +649,7 @@ mod tests {
         // Verify error
         assert!(result.is_err());
         match result.unwrap_err() {
-            Error::UnknownError(msg) => {
+            Error::ServerError(msg) => {
                 assert_eq!(msg, "Unknown error (HTTP 422 Unprocessable Entity)");
             }
             err => panic!("Unexpected error: {:?}", err),
