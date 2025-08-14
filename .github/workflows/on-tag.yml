@@ -17,5 +17,4 @@ jobs:
     uses: ./.github/workflows/build-publish.yml
     with:
       is-release: true
-    secrets:
-      cargo-registry-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+    secrets: inherit
