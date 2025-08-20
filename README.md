@@ -148,6 +148,14 @@ There is a size limit for each of the supported file types.
 | Audio     | .flac, .wav, .mp3, .m4a, .aac, .alac, .ogg | 20,971,520         | 20 MB           |
 | Text      | .txt                                       | 5,242,880          | 5 MB            |
 
+## Supported social media platforms
+
+The Reality Defender API supports analysis of media from the following social media platforms:
+* Facebook
+* Instagram
+* Twitter
+* YouTube
+* TikTok
 
 ## Running the Examples
 
@@ -166,11 +174,14 @@ cargo run --example basic
 
 # Run the batch processing example
 cargo run --example batch_processing
+
+# Run the social media example
+cargo run --example social_media
 ```
 
 ### Required Test Files
 
-To run the examples successfully, you'll need to add your own image and video files to the `files` directory:
+To run the examples that require uploading local files successfully, you'll need to add your own image and video files to the `files` directory:
 
 1. Create an `files` directory in the root of the project (if it doesn't already exist):
    ```bash

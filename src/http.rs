@@ -1,7 +1,10 @@
 use crate::config::Config;
 use crate::error::{Error, Result};
 use crate::file::SUPPORTED_FILE_TYPES;
-use crate::models::BaseResponse;
+use crate::http::api_paths::SOCIAL_MEDIA;
+use crate::models::{BaseResponse, UploadSocialMediaOptions};
+use crate::utils::{determine_content_type, is_valid_url};
+use crate::UploadResult;
 use reqwest::{Client as ReqwestClient, ClientBuilder, Response, StatusCode};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -16,6 +19,8 @@ pub mod api_paths {
     pub const MEDIA_RESULT: &str = "/api/media/users";
     /// Path for retrieving all media results with pagination
     pub const ALL_MEDIA_RESULTS: &str = "/api/v2/media/users/pages";
+    // Path for posting social media links
+    pub const SOCIAL_MEDIA: &str = "/api/files/social";
 }
 
 /// HTTP client for making API requests
@@ -179,16 +184,7 @@ impl HttpClient {
         }
 
         // 4. Determine content type based on file extension
-        let content_type = match path.extension().and_then(|ext| ext.to_str()) {
-            Some("jpg") | Some("jpeg") => "image/jpeg",
-            Some("png") => "image/png",
-            Some("gif") => "image/gif",
-            Some("mp4") => "video/mp4",
-            Some("mov") => "video/quicktime",
-            Some("avi") => "video/x-msvideo",
-            Some("webm") => "video/webm",
-            _ => "application/octet-stream",
-        };
+        let content_type = determine_content_type(path);
 
         // 5. Upload to the presigned URL
         self.put(
@@ -199,9 +195,9 @@ impl HttpClient {
         .await?;
 
         // 6. Create upload result with request_id and media_id
-        let upload_result = crate::models::UploadResult {
+        let upload_result = UploadResult {
             request_id: signed_url_response.request_id,
-            media_id: signed_url_response.media_id,
+            media_id: Option::from(signed_url_response.media_id),
             result_url: None,
         };
 
@@ -219,16 +215,7 @@ impl HttpClient {
         path: &Path,
     ) -> Result<T> {
         // Determine content type based on file extension
-        let content_type = match path.extension().and_then(|ext| ext.to_str()) {
-            Some("jpg") | Some("jpeg") => "image/jpeg",
-            Some("png") => "image/png",
-            Some("gif") => "image/gif",
-            Some("mp4") => "video/mp4",
-            Some("mov") => "video/quicktime",
-            Some("avi") => "video/x-msvideo",
-            Some("webm") => "video/webm",
-            _ => "application/octet-stream",
-        };
+        let content_type = determine_content_type(path);
 
         // Upload to the presigned URL
         self.put(
@@ -239,9 +226,9 @@ impl HttpClient {
         .await?;
 
         // Create upload result with request_id and media_id
-        let upload_result = crate::models::UploadResult {
+        let upload_result = UploadResult {
             request_id: signed_url_response.request_id,
-            media_id: signed_url_response.media_id,
+            media_id: Option::from(signed_url_response.media_id),
             result_url: None,
         };
 
@@ -249,6 +236,28 @@ impl HttpClient {
         Ok(serde_json::from_value(serde_json::to_value(
             upload_result,
         )?)?)
+    }
+
+    pub async fn upload_social_media_link(&self, social_media_link: &str) -> Result<UploadResult> {
+        // Check if the link is valid
+        is_valid_url(social_media_link)?;
+
+        // Post to the social media endpoint.
+        let response: BaseResponse = self
+            .post(
+                SOCIAL_MEDIA,
+                &UploadSocialMediaOptions {
+                    social_link: social_media_link.to_string(),
+                },
+            )
+            .await?;
+
+        // Convert to the requested type
+        Ok(UploadResult {
+            request_id: response.request_id.unwrap(),
+            media_id: None,
+            result_url: None,
+        })
     }
 
     /// Handle API responses and parse JSON
@@ -268,6 +277,7 @@ impl HttpClient {
                     code: "UNKNOWN".to_string(),
                     response: format!("Unknown error (HTTP {status})"),
                     errno: -1,
+                    ..Default::default()
                 }
             };
 
@@ -460,7 +470,7 @@ mod tests {
         assert!(result.is_ok(), "Upload failed: {:?}", result.err());
         let upload_result = result.unwrap();
         assert_eq!(upload_result.request_id, "test-request-id");
-        assert_eq!(upload_result.media_id, "test-media-id");
+        assert_eq!(upload_result.media_id.unwrap(), "test-media-id");
         assert!(upload_result.result_url.is_none());
     }
 
@@ -1003,6 +1013,141 @@ mod tests {
         match result.unwrap_err() {
             Error::InvalidFile(msg) => assert!(msg.contains("Invalid file name")),
             err => panic!("Expected InvalidFile error, got: {:?}", err),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_upload_social_media_link_success() {
+        let mut server = mockito::Server::new_async().await;
+
+        // Mock the social media upload endpoint
+        let _m = server
+            .mock("POST", "/api/files/social")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .match_header("X-API-KEY", "test_api_key")
+            .match_body(Matcher::Json(json!({
+                "socialLink": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+            })))
+            .with_body(
+                json!({
+                    "code": "success",
+                    "errno": 0,
+                    "response": "",
+                    "requestId": "social-request-id",
+                })
+                .to_string(),
+            )
+            .create_async()
+            .await;
+
+        let config = Config {
+            api_key: "test_api_key".to_string(),
+            base_url: Some(server.url()),
+            ..Default::default()
+        };
+        let client = Client::new(config).unwrap();
+
+        let result = client
+            .upload_social_media("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+            .await;
+
+        println!("{:?}", result);
+        assert!(result.is_ok());
+        let upload_result = result.unwrap();
+        assert_eq!(upload_result.request_id, "social-request-id");
+    }
+
+    #[tokio::test]
+    async fn test_upload_social_media_link_invalid_url() {
+        let config = Config {
+            api_key: "test_api_key".to_string(),
+            ..Default::default()
+        };
+        let client = Client::new(config).unwrap();
+
+        // Test with invalid URL (no scheme)
+        let result = client.upload_social_media("www.example.com").await;
+
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            Error::InvalidRequest(msg) => {
+                assert!(msg.contains("Invalid URL"));
+            }
+            err => panic!("Expected InvalidRequest error, got: {:?}", err),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_upload_social_media_link_invalid_scheme() {
+        let config = Config {
+            api_key: "test_api_key".to_string(),
+            ..Default::default()
+        };
+        let client = Client::new(config).unwrap();
+
+        // Test with invalid scheme
+        let result = client.upload_social_media("ftp://example.com/video").await;
+
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            Error::InvalidRequest(msg) => {
+                assert!(msg.contains("http or https scheme"));
+            }
+            err => panic!("Expected InvalidRequest error, got: {:?}", err),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_upload_social_media_link_ip_address() {
+        let config = Config {
+            api_key: "test_api_key".to_string(),
+            ..Default::default()
+        };
+        let client = Client::new(config).unwrap();
+
+        // Test with IP address (not allowed)
+        let result = client
+            .upload_social_media("https://192.168.1.1/video")
+            .await;
+
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            Error::InvalidRequest(msg) => {
+                assert!(msg.contains("valid domain"));
+            }
+            err => panic!("Expected InvalidRequest error, got: {:?}", err),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_upload_social_media_link_server_error() {
+        let mut server = mockito::Server::new_async().await;
+
+        // Mock server error response
+        let _m = server
+            .mock("POST", "/api/files/social")
+            .with_status(500)
+            .with_header("content-type", "application/json")
+            .with_body(r#"{"response": "Internal server error"}"#)
+            .create_async()
+            .await;
+
+        let config = Config {
+            api_key: "test_api_key".to_string(),
+            base_url: Some(server.url()),
+            ..Default::default()
+        };
+        let client = Client::new(config).unwrap();
+
+        let result = client
+            .upload_social_media("https://www.instagram.com/p/ABC123/")
+            .await;
+
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            Error::ServerError(_) => {} // Expected error
+            err => panic!("Unexpected error: {:?}", err),
         }
     }
 

@@ -24,17 +24,16 @@ impl Client {
 
     /// Upload a file for analysis
     pub async fn upload(&self, options: UploadOptions) -> Result<UploadResult> {
-        // Validate file path
-        if !crate::utils::file_exists(&options.file_path) {
-            return Err(Error::InvalidFile(format!(
-                "File not found: {}",
-                options.file_path
-            )));
-        }
-
         // Upload file using the presigned URL flow
         self.http_client
             .upload_file::<UploadResult>(&options.file_path)
+            .await
+    }
+
+    // Upload a social media link for analysis.
+    pub async fn upload_social_media(&self, social_media_link: &str) -> Result<UploadResult> {
+        self.http_client
+            .upload_social_media_link(social_media_link)
             .await
     }
 
@@ -131,7 +130,7 @@ impl Client {
             // Check if analysis is complete. The API uses "ANALYZING" while processing
             // and various status values when complete.
             match result.status.as_str() {
-                "ANALYZING" => sleep(Duration::from_millis(polling_interval)).await,
+                "ANALYZING" | "DOWNLOADING" => sleep(Duration::from_millis(polling_interval)).await,
                 // Any other status means the analysis is done (COMPLETED, ERROR, etc.)
                 _ => {
                     return Ok(result);
