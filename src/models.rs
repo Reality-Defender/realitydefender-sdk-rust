@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 /// Base API response
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
 pub struct BaseResponse {
     /// Status code from the API
     #[serde(rename = "code")]
@@ -14,6 +14,10 @@ pub struct BaseResponse {
     /// Response message.
     #[serde(rename = "response")]
     pub response: String,
+
+    /// Response message.
+    #[serde(rename = "requestId")]
+    pub request_id: Option<String>,
 }
 
 /// Options for uploading a file
@@ -21,6 +25,13 @@ pub struct BaseResponse {
 pub struct UploadOptions {
     /// Path to the file to upload
     pub file_path: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct UploadSocialMediaOptions {
+    /// Path to the file to upload
+    #[serde(rename = "socialLink")]
+    pub social_link: String,
 }
 
 /// Response containing a presigned URL for file upload
@@ -62,7 +73,7 @@ pub struct UploadResult {
 
     /// Unique identifier for the media
     #[serde(default)]
-    pub media_id: String,
+    pub media_id: Option<String>,
 
     /// URL where the result can be accessed
     #[serde(default)]
