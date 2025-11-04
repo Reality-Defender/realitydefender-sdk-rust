@@ -309,12 +309,6 @@ mod tests {
     use std::io::Write;
     use tempfile::tempdir;
 
-    #[derive(Debug, Serialize, Deserialize)]
-    struct TestResponse {
-        status: String,
-        message: String,
-    }
-
     #[tokio::test]
     async fn test_client_new() {
         // Valid configuration
