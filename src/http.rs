@@ -303,17 +303,10 @@ mod tests {
     use super::*;
     use crate::{Client, UploadOptions};
     use mockito::Matcher;
-    use serde::Deserialize;
     use serde_json::json;
     use std::fs::File;
     use std::io::Write;
     use tempfile::tempdir;
-
-    #[derive(Debug, Serialize, Deserialize)]
-    struct TestResponse {
-        status: String,
-        message: String,
-    }
 
     #[tokio::test]
     async fn test_client_new() {
