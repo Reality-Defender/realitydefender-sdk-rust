@@ -137,6 +137,44 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
+### User feedback (V2)
+
+```rust
+use realitydefender::CreateUserFeedbackV2Options;
+
+let fb = client
+    .create_user_feedback_v2(CreateUserFeedbackV2Options {
+        request_id: upload_result.request_id.clone(),
+        label: "REAL".into(),
+        feedback_category: "CONFIRMATION".into(),
+        comment: Some("Optional note".into()),
+    })
+    .await?;
+```
+
+Returns `Result<UserFeedbackV2, realitydefender::Error>`. `UserFeedbackV2` is:
+
+```rust
+pub struct UserFeedbackV2 {
+    pub id: Option<String>,
+    pub user_id: Option<String>,
+    pub request_id: Option<String>,
+    pub institution_id: Option<String>,
+    pub text: Option<String>,
+    pub category: Option<String>,
+    pub user_name: Option<String>,
+    pub user_email: Option<String>,
+    pub org_name: Option<String>,
+    pub media_type: Option<String>,
+    pub media_view_url: Option<String>,
+    pub media_source: Option<String>,
+    pub label: Option<String>,
+    pub created_at: Option<String>,
+}
+```
+
+(JSON uses camelCase via serde; empty strings may deserialize as `None` depending on payload.)
+
 ## Supported file types and size limits
 
 There is a size limit for each of the supported file types.
