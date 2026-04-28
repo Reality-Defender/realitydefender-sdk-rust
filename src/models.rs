@@ -34,9 +34,9 @@ pub struct UploadSocialMediaOptions {
     pub social_link: String,
 }
 
-/// Payload for `Client::create_user_feedback_v2`.
+/// Payload for `Client::create_user_feedback`.
 #[derive(Debug, Clone, Serialize)]
-pub struct CreateUserFeedbackV2Options {
+pub struct CreateUserFeedbackOptions {
     /// Media / detection request ID
     #[serde(rename = "requestId")]
     pub request_id: String,
@@ -52,7 +52,7 @@ pub struct CreateUserFeedbackV2Options {
 
 /// Response body from `POST /api/v2/user-feedback` (201 Created)
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct UserFeedbackV2 {
+pub struct UserFeedback {
     #[serde(default)]
     pub id: Option<String>,
     #[serde(rename = "userId", default)]

@@ -137,13 +137,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-### User feedback (V2)
+### User feedback
 
 ```rust
-use realitydefender::CreateUserFeedbackV2Options;
+use realitydefender::CreateUserFeedbackOptions;
 
 let fb = client
-    .create_user_feedback_v2(CreateUserFeedbackV2Options {
+    .create_user_feedback(CreateUserFeedbackOptions {
         request_id: upload_result.request_id.clone(),
         label: "REAL".into(),
         feedback_category: "CONFIRMATION".into(),
@@ -152,10 +152,10 @@ let fb = client
     .await?;
 ```
 
-Returns `Result<UserFeedbackV2, realitydefender::Error>`. `UserFeedbackV2` is:
+Returns `Result<UserFeedback, realitydefender::Error>`. `UserFeedback` is:
 
 ```rust
-pub struct UserFeedbackV2 {
+pub struct UserFeedback {
     pub id: Option<String>,
     pub user_id: Option<String>,
     pub request_id: Option<String>,

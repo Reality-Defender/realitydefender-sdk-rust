@@ -2,9 +2,9 @@ use crate::config::Config;
 use crate::error::{Error, Result};
 use crate::http::{api_paths, HttpClient};
 use crate::models::{
-    AnalysisResult, BatchOptions, CreateUserFeedbackV2Options, DetectionModelResult,
+    AnalysisResult, BatchOptions, CreateUserFeedbackOptions, DetectionModelResult,
     DetectionResult, DetectionResultList, FloatOrObject, FormattedDetectionResultList,
-    GetResultOptions, GetResultsOptions, UploadOptions, UploadResult, UserFeedbackV2,
+    GetResultOptions, GetResultsOptions, UploadOptions, UploadResult, UserFeedback,
 };
 use futures::future;
 use std::time::{Duration, Instant};
@@ -37,12 +37,12 @@ impl Client {
             .await
     }
 
-    /// Submit user scan feedback (V2). Delegates to [`HttpClient::create_user_feedback_v2`](crate::http::HttpClient::create_user_feedback_v2).
-    pub async fn create_user_feedback_v2(
+    /// Submit user scan feedback. Delegates to [`HttpClient::create_user_feedback`](crate::http::HttpClient::create_user_feedback).
+    pub async fn create_user_feedback(
         &self,
-        options: CreateUserFeedbackV2Options,
-    ) -> Result<UserFeedbackV2> {
-        self.http_client.create_user_feedback_v2(&options).await
+        options: CreateUserFeedbackOptions,
+    ) -> Result<UserFeedback> {
+        self.http_client.create_user_feedback(&options).await
     }
 
     /// Get the analysis result for a specific request ID
@@ -357,7 +357,7 @@ impl Client {
 #[cfg(test)]
 mod tests {
     use crate::{
-        BatchOptions, Client, Config, CreateUserFeedbackV2Options, Error, GetResultOptions,
+        BatchOptions, Client, Config, CreateUserFeedbackOptions, Error, GetResultOptions,
         UploadOptions,
     };
     use mockito::Matcher;
@@ -879,7 +879,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_create_user_feedback_v2_success() {
+    async fn test_create_user_feedback_success() {
         let mut server = mockito::Server::new_async().await;
 
         let m = server
@@ -912,7 +912,7 @@ mod tests {
         .unwrap();
 
         let result = client
-            .create_user_feedback_v2(CreateUserFeedbackV2Options {
+            .create_user_feedback(CreateUserFeedbackOptions {
                 request_id: "req-a".to_string(),
                 label: "REAL".to_string(),
                 feedback_category: "CONFIRMATION".to_string(),
@@ -929,7 +929,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_create_user_feedback_v2_validation() {
+    async fn test_create_user_feedback_validation() {
         let server = mockito::Server::new_async().await;
 
         let client = Client::new(Config {
@@ -940,7 +940,7 @@ mod tests {
         .unwrap();
 
         let err = client
-            .create_user_feedback_v2(CreateUserFeedbackV2Options {
+            .create_user_feedback(CreateUserFeedbackOptions {
                 request_id: String::new(),
                 label: "REAL".to_string(),
                 feedback_category: "OTHER".to_string(),
