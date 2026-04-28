@@ -4,7 +4,7 @@ use crate::http::{api_paths, HttpClient};
 use crate::models::{
     AnalysisResult, BatchOptions, CreateUserFeedbackV2Options, DetectionModelResult,
     DetectionResult, DetectionResultList, FloatOrObject, FormattedDetectionResultList,
-    GetResultOptions, GetResultsOptions,     UploadOptions, UploadResult, UserFeedbackV2,
+    GetResultOptions, GetResultsOptions, UploadOptions, UploadResult, UserFeedbackV2,
 };
 use futures::future;
 use std::time::{Duration, Instant};
