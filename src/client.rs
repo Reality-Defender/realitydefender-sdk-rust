@@ -91,8 +91,8 @@ impl Client {
         };
 
         // Check if we have a score in resultsSummary metadata
-        if result.results_summary.is_some() {
-            if let Some(metadata) = &result.results_summary.as_ref().unwrap().metadata {
+        if let Some(summary) = &result.results_summary {
+            if let Some(metadata) = &summary.metadata {
                 if let Some(final_score) = metadata.get("finalScore") {
                     if let Some(score_value) = final_score.as_f64() {
                         detection_result.score = Some(score_value / 100.0)
