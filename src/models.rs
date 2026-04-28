@@ -34,6 +34,55 @@ pub struct UploadSocialMediaOptions {
     pub social_link: String,
 }
 
+/// Payload for `Client::create_user_feedback_v2`.
+#[derive(Debug, Clone, Serialize)]
+pub struct CreateUserFeedbackV2Options {
+    /// Media / detection request ID
+    #[serde(rename = "requestId")]
+    pub request_id: String,
+    /// REAL, SYNTHETIC, MANIPULATED, UNKNOWN
+    pub label: String,
+    /// FALSE_POSITIVE, FALSE_NEGATIVE, CONFIRMATION, OTHER
+    #[serde(rename = "feedbackCategory")]
+    pub feedback_category: String,
+    /// Optional free-text comment
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub comment: Option<String>,
+}
+
+/// Response body from `POST /api/v2/user-feedback` (201 Created)
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct UserFeedbackV2 {
+    #[serde(default)]
+    pub id: Option<String>,
+    #[serde(rename = "userId", default)]
+    pub user_id: Option<String>,
+    #[serde(rename = "requestId", default)]
+    pub request_id: Option<String>,
+    #[serde(rename = "institutionId", default)]
+    pub institution_id: Option<String>,
+    #[serde(default)]
+    pub text: Option<String>,
+    #[serde(default)]
+    pub category: Option<String>,
+    #[serde(rename = "userName", default)]
+    pub user_name: Option<String>,
+    #[serde(rename = "userEmail", default)]
+    pub user_email: Option<String>,
+    #[serde(rename = "orgName", default)]
+    pub org_name: Option<String>,
+    #[serde(rename = "mediaType", default)]
+    pub media_type: Option<String>,
+    #[serde(rename = "mediaViewUrl", default)]
+    pub media_view_url: Option<String>,
+    #[serde(rename = "mediaSource", default)]
+    pub media_source: Option<String>,
+    #[serde(default)]
+    pub label: Option<String>,
+    #[serde(rename = "createdAt", default)]
+    pub created_at: Option<String>,
+}
+
 /// Response containing a presigned URL for file upload
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct SignedUrlResponse {

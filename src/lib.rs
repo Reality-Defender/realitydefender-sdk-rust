@@ -84,7 +84,7 @@ pub use client::Client;
 pub use config::Config;
 pub use error::{Error, Result};
 pub use models::{
-    AnalysisResult, BatchOptions, DetectionModel, DetectionResult, DetectionResultList,
-    FormattedDetectionResultList, GetResultOptions, GetResultsOptions, ResultsSummary,
-    UploadOptions, UploadResult,
+    AnalysisResult, BatchOptions, CreateUserFeedbackV2Options, DetectionModel, DetectionResult,
+    DetectionResultList, FormattedDetectionResultList, GetResultOptions, GetResultsOptions,
+    ResultsSummary, UploadOptions, UploadResult, UserFeedbackV2,
 };
