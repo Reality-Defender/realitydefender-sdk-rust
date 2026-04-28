@@ -2,9 +2,9 @@ use crate::config::Config;
 use crate::error::{Error, Result};
 use crate::http::{api_paths, HttpClient};
 use crate::models::{
-    AnalysisResult, BatchOptions, CreateUserFeedbackOptions, DetectionModelResult,
-    DetectionResult, DetectionResultList, FloatOrObject, FormattedDetectionResultList,
-    GetResultOptions, GetResultsOptions, UploadOptions, UploadResult, UserFeedback,
+    AnalysisResult, BatchOptions, CreateUserFeedbackOptions, DetectionModelResult, DetectionResult,
+    DetectionResultList, FloatOrObject, FormattedDetectionResultList, GetResultOptions,
+    GetResultsOptions, UploadOptions, UploadResult, UserFeedback,
 };
 use futures::future;
 use std::time::{Duration, Instant};
