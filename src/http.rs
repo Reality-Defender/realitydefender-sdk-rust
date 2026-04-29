@@ -1,8 +1,10 @@
 use crate::config::Config;
 use crate::error::{Error, Result};
 use crate::file::SUPPORTED_FILE_TYPES;
-use crate::http::api_paths::SOCIAL_MEDIA;
-use crate::models::{BaseResponse, UploadSocialMediaOptions};
+use crate::http::api_paths::{SOCIAL_MEDIA, USER_FEEDBACK};
+use crate::models::{
+    BaseResponse, CreateUserFeedbackOptions, UploadSocialMediaOptions, UserFeedback,
+};
 use crate::utils::{determine_content_type, is_valid_url};
 use crate::UploadResult;
 use reqwest::{Client as ReqwestClient, ClientBuilder, Response, StatusCode};
@@ -21,6 +23,8 @@ pub mod api_paths {
     pub const ALL_MEDIA_RESULTS: &str = "/api/v2/media/users/pages";
     // Path for posting social media links
     pub const SOCIAL_MEDIA: &str = "/api/files/social";
+    /// User scan feedback
+    pub const USER_FEEDBACK: &str = "/api/v2/user-feedback";
 }
 
 /// HTTP client for making API requests
@@ -258,6 +262,23 @@ impl HttpClient {
             media_id: None,
             result_url: None,
         })
+    }
+
+    /// Submit user scan feedback, matching the flow used for social media uploads.
+    pub async fn create_user_feedback(
+        &self,
+        options: &CreateUserFeedbackOptions,
+    ) -> Result<UserFeedback> {
+        if options.request_id.is_empty()
+            || options.label.is_empty()
+            || options.feedback_category.is_empty()
+        {
+            return Err(Error::InvalidRequest(
+                "requestId, label, and feedbackCategory are required".to_string(),
+            ));
+        }
+
+        self.post(USER_FEEDBACK, options).await
     }
 
     /// Handle API responses and parse JSON

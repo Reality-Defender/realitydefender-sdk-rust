@@ -14,7 +14,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     })?;
 
     // Example social media URLs to analyze
-    let social_media_urls = vec![
+    let social_media_urls = [
         "https://www.youtube.com/watch?v=6O0fySNw-Lw",
         "https://youtube.com/watch?v=ABC123",
     ];

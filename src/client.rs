@@ -2,9 +2,9 @@ use crate::config::Config;
 use crate::error::{Error, Result};
 use crate::http::{api_paths, HttpClient};
 use crate::models::{
-    AnalysisResult, BatchOptions, DetectionModelResult, DetectionResult, DetectionResultList,
-    FloatOrObject, FormattedDetectionResultList, GetResultOptions, GetResultsOptions,
-    UploadOptions, UploadResult,
+    AnalysisResult, BatchOptions, CreateUserFeedbackOptions, DetectionModelResult, DetectionResult,
+    DetectionResultList, FloatOrObject, FormattedDetectionResultList, GetResultOptions,
+    GetResultsOptions, UploadOptions, UploadResult, UserFeedback,
 };
 use futures::future;
 use std::time::{Duration, Instant};
@@ -35,6 +35,14 @@ impl Client {
         self.http_client
             .upload_social_media_link(social_media_link)
             .await
+    }
+
+    /// Submit user scan feedback. Delegates to [`HttpClient::create_user_feedback`](crate::http::HttpClient::create_user_feedback).
+    pub async fn create_user_feedback(
+        &self,
+        options: CreateUserFeedbackOptions,
+    ) -> Result<UserFeedback> {
+        self.http_client.create_user_feedback(&options).await
     }
 
     /// Get the analysis result for a specific request ID
@@ -83,8 +91,8 @@ impl Client {
         };
 
         // Check if we have a score in resultsSummary metadata
-        if result.results_summary.is_some() {
-            if let Some(metadata) = &result.results_summary.as_ref().unwrap().metadata {
+        if let Some(summary) = &result.results_summary {
+            if let Some(metadata) = &summary.metadata {
                 if let Some(final_score) = metadata.get("finalScore") {
                     if let Some(score_value) = final_score.as_f64() {
                         detection_result.score = Some(score_value / 100.0)
@@ -348,7 +356,11 @@ impl Client {
 
 #[cfg(test)]
 mod tests {
-    use crate::{BatchOptions, Client, Config, Error, GetResultOptions, UploadOptions};
+    use crate::{
+        BatchOptions, Client, Config, CreateUserFeedbackOptions, Error, GetResultOptions,
+        UploadOptions,
+    };
+    use mockito::Matcher;
     use serde_json::json;
     use std::fs::File;
     use std::io::Write;
@@ -864,5 +876,84 @@ mod tests {
         mock1.assert_async().await;
         mock2.assert_async().await;
         mock3.assert_async().await;
+    }
+
+    #[tokio::test]
+    async fn test_create_user_feedback_success() {
+        let mut server = mockito::Server::new_async().await;
+
+        let m = server
+            .mock("POST", "/api/v2/user-feedback")
+            .with_status(201)
+            .with_header("content-type", "application/json")
+            .match_header("X-API-KEY", "test_api_key")
+            .match_body(Matcher::Json(json!({
+                "requestId": "req-a",
+                "label": "REAL",
+                "feedbackCategory": "CONFIRMATION",
+                "comment": "note"
+            })))
+            .with_body(
+                json!({
+                    "id": "fb-1",
+                    "requestId": "req-a",
+                    "category": "CONFIRMATION"
+                })
+                .to_string(),
+            )
+            .create_async()
+            .await;
+
+        let client = Client::new(Config {
+            api_key: "test_api_key".to_string(),
+            base_url: Some(server.url()),
+            ..Default::default()
+        })
+        .unwrap();
+
+        let result = client
+            .create_user_feedback(CreateUserFeedbackOptions {
+                request_id: "req-a".to_string(),
+                label: "REAL".to_string(),
+                feedback_category: "CONFIRMATION".to_string(),
+                comment: Some("note".to_string()),
+            })
+            .await;
+
+        assert!(result.is_ok());
+        let fb = result.unwrap();
+        assert_eq!(fb.id.as_deref(), Some("fb-1"));
+        assert_eq!(fb.request_id.as_deref(), Some("req-a"));
+
+        m.assert_async().await;
+    }
+
+    #[tokio::test]
+    async fn test_create_user_feedback_validation() {
+        let server = mockito::Server::new_async().await;
+
+        let client = Client::new(Config {
+            api_key: "test_api_key".to_string(),
+            base_url: Some(server.url()),
+            ..Default::default()
+        })
+        .unwrap();
+
+        let err = client
+            .create_user_feedback(CreateUserFeedbackOptions {
+                request_id: String::new(),
+                label: "REAL".to_string(),
+                feedback_category: "OTHER".to_string(),
+                comment: None,
+            })
+            .await
+            .unwrap_err();
+
+        match err {
+            Error::InvalidRequest(msg) => {
+                assert!(msg.contains("required"));
+            }
+            e => panic!("unexpected {:?}", e),
+        }
     }
 }
