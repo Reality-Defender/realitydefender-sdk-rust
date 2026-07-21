@@ -11,12 +11,12 @@ use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use tokio::time::sleep;
 
-/// IMAGE heatmaps for non-ensemble models with API status `FAKE` and a
+/// IMAGE heatmaps for non-ensemble models with status `MANIPULATED` and a
 /// non-empty pre-signed URL.
 fn extract_heatmaps(
     media_type: Option<&str>,
     heatmaps: Option<&HashMap<String, String>>,
-    models: &[crate::models::DetectionModel],
+    models: &[DetectionModelResult],
 ) -> Option<HashMap<String, String>> {
     let is_image = media_type
         .map(|value| value.eq_ignore_ascii_case("IMAGE"))
@@ -29,7 +29,8 @@ fn extract_heatmaps(
     let artificial_names: std::collections::HashSet<&str> = models
         .iter()
         .filter(|model| {
-            model.status == "FAKE" && !model.name.to_ascii_lowercase().contains("ensemble")
+            model.status == "MANIPULATED"
+                && !model.name.to_ascii_lowercase().contains("ensemble")
         })
         .map(|model| model.name.as_str())
         .collect();
@@ -115,37 +116,8 @@ impl Client {
 
     /// Normalize scores from 0-100 to 0-1 range
     fn normalize_scores(&self, result: &AnalysisResult) -> DetectionResult {
-        let mut detection_result = DetectionResult {
-            // Replace FAKE with MANIPULATED in overall status
-            status: if result.status == "FAKE" {
-                "MANIPULATED".to_string()
-            } else {
-                result.status.clone()
-            },
-            request_id: result.request_id.clone(),
-            score: result.final_score.map(|final_score| final_score / 100.0),
-            models: vec![],
-            // IMAGE heatmaps only for artificial, non-ensemble models (matches UI).
-            heatmaps: extract_heatmaps(
-                result.media_type.as_deref(),
-                result.heatmaps.as_ref(),
-                &result.models,
-            ),
-        };
-
-        // Check if we have a score in resultsSummary metadata
-        if let Some(summary) = &result.results_summary {
-            if let Some(metadata) = &summary.metadata {
-                if let Some(final_score) = metadata.get("finalScore") {
-                    if let Some(score_value) = final_score.as_f64() {
-                        detection_result.score = Some(score_value / 100.0)
-                    }
-                }
-            }
-        }
-
         // Normalize model scores and handle missing scores
-        detection_result.models = result
+        let models: Vec<DetectionModelResult> = result
             .models
             .iter()
             .filter(|model| model.status != "NOT_APPLICABLE")
@@ -162,6 +134,37 @@ impl Client {
                 },
             })
             .collect();
+
+        let mut detection_result = DetectionResult {
+            // Replace FAKE with MANIPULATED in overall status
+            status: if result.status == "FAKE" {
+                "MANIPULATED".to_string()
+            } else {
+                result.status.clone()
+            },
+            request_id: result.request_id.clone(),
+            score: result.final_score.map(|final_score| final_score / 100.0),
+            models,
+            // IMAGE heatmaps only for artificial, non-ensemble models (matches UI).
+            heatmaps: None,
+        };
+
+        // Check if we have a score in resultsSummary metadata
+        if let Some(summary) = &result.results_summary {
+            if let Some(metadata) = &summary.metadata {
+                if let Some(final_score) = metadata.get("finalScore") {
+                    if let Some(score_value) = final_score.as_f64() {
+                        detection_result.score = Some(score_value / 100.0)
+                    }
+                }
+            }
+        }
+
+        detection_result.heatmaps = extract_heatmaps(
+            result.media_type.as_deref(),
+            result.heatmaps.as_ref(),
+            &detection_result.models,
+        );
 
         detection_result
     }
@@ -1004,33 +1007,24 @@ mod tests {
     #[test]
     fn test_extract_heatmaps_filters_to_fake_non_ensemble_image_models() {
         use super::extract_heatmaps;
-        use crate::models::DetectionModel;
+        use crate::models::DetectionModelResult;
         use std::collections::HashMap;
 
         let models = vec![
-            DetectionModel {
+            DetectionModelResult {
                 name: "rd-cedar-img".to_string(),
-                status: "FAKE".to_string(),
-                prediction_number: None,
-                normalized_prediction_number: None,
-                final_score: Some(95.0),
-                info: None,
+                status: "MANIPULATED".to_string(),
+                score: Some(0.95),
             },
-            DetectionModel {
+            DetectionModelResult {
                 name: "rd-elm-img".to_string(),
                 status: "AUTHENTIC".to_string(),
-                prediction_number: None,
-                normalized_prediction_number: None,
-                final_score: Some(10.0),
-                info: None,
+                score: Some(0.1),
             },
-            DetectionModel {
+            DetectionModelResult {
                 name: "rd-img-ensemble".to_string(),
-                status: "FAKE".to_string(),
-                prediction_number: None,
-                normalized_prediction_number: None,
-                final_score: Some(95.0),
-                info: None,
+                status: "MANIPULATED".to_string(),
+                score: Some(0.95),
             },
         ];
 
