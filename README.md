@@ -79,7 +79,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-Re-fetch the result to refresh expired heatmap URLs. For other media-detail fields (aggregation metadata, explainability, thumbnails, etc.), use the [Media Detail API](https://docs.realitydefender.com/api-reference/endpoint/get_media_detail).
+Re-fetch the result to refresh expired heatmap URLs.
 
 ### Processing Multiple Files
 
