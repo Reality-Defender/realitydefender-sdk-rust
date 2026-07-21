@@ -11,10 +11,12 @@ use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use tokio::time::sleep;
 
-/// Exposing non-empty URLs for IMAGE only.
+/// IMAGE heatmaps for non-ensemble models with an artificial result (API status
+/// `FAKE`, matching UI ARTIFICIAL) and a non-empty pre-signed URL.
 fn extract_heatmaps(
     media_type: Option<&str>,
     heatmaps: Option<&HashMap<String, String>>,
+    models: &[crate::models::DetectionModel],
 ) -> Option<HashMap<String, String>> {
     let is_image = media_type
         .map(|value| value.eq_ignore_ascii_case("IMAGE"))
@@ -24,9 +26,17 @@ fn extract_heatmaps(
     }
 
     let heatmaps = heatmaps?;
+    let artificial_names: std::collections::HashSet<&str> = models
+        .iter()
+        .filter(|model| {
+            model.status == "FAKE" && !model.name.to_ascii_lowercase().contains("ensemble")
+        })
+        .map(|model| model.name.as_str())
+        .collect();
+
     let usable: HashMap<String, String> = heatmaps
         .iter()
-        .filter(|(_, url)| !url.is_empty())
+        .filter(|(name, url)| !url.is_empty() && artificial_names.contains(name.as_str()))
         .map(|(name, url)| (name.clone(), url.clone()))
         .collect();
 
@@ -115,8 +125,12 @@ impl Client {
             request_id: result.request_id.clone(),
             score: result.final_score.map(|final_score| final_score / 100.0),
             models: vec![],
-            // API returns heatmaps for all media types; only IMAGE URLs are meaningful.
-            heatmaps: extract_heatmaps(result.media_type.as_deref(), result.heatmaps.as_ref()),
+            // IMAGE heatmaps only for artificial, non-ensemble models (matches UI).
+            heatmaps: extract_heatmaps(
+                result.media_type.as_deref(),
+                result.heatmaps.as_ref(),
+                &result.models,
+            ),
         };
 
         // Check if we have a score in resultsSummary metadata

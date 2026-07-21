@@ -71,8 +71,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    // IMAGE heatmaps only (pre-signed URLs expire after 15 minutes; None otherwise)
-    // model slug → PNG URL
+    // IMAGE heatmaps for artificial non-ensemble models only
+    // (API status FAKE / UI ARTIFICIAL; pre-signed URLs expire after 15 minutes; None otherwise)
     println!("Heatmaps: {:?}", result.heatmaps);
 
     Ok(())
