@@ -29,8 +29,7 @@ fn extract_heatmaps(
     let artificial_names: std::collections::HashSet<&str> = models
         .iter()
         .filter(|model| {
-            model.status == "MANIPULATED"
-                && !model.name.to_ascii_lowercase().contains("ensemble")
+            model.status == "MANIPULATED" && !model.name.to_ascii_lowercase().contains("ensemble")
         })
         .map(|model| model.name.as_str())
         .collect();
