@@ -7,8 +7,45 @@ use crate::models::{
     GetResultsOptions, UploadOptions, UploadResult, UserFeedback,
 };
 use futures::future;
+use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use tokio::time::sleep;
+
+/// IMAGE heatmaps for non-ensemble models with status `MANIPULATED` and a
+/// non-empty pre-signed URL.
+fn extract_heatmaps(
+    media_type: Option<&str>,
+    heatmaps: Option<&HashMap<String, String>>,
+    models: &[DetectionModelResult],
+) -> Option<HashMap<String, String>> {
+    let is_image = media_type
+        .map(|value| value.eq_ignore_ascii_case("IMAGE"))
+        .unwrap_or(false);
+    if !is_image {
+        return None;
+    }
+
+    let heatmaps = heatmaps?;
+    let artificial_names: std::collections::HashSet<&str> = models
+        .iter()
+        .filter(|model| {
+            model.status == "MANIPULATED" && !model.name.to_ascii_lowercase().contains("ensemble")
+        })
+        .map(|model| model.name.as_str())
+        .collect();
+
+    let usable: HashMap<String, String> = heatmaps
+        .iter()
+        .filter(|(name, url)| !url.is_empty() && artificial_names.contains(name.as_str()))
+        .map(|(name, url)| (name.clone(), url.clone()))
+        .collect();
+
+    if usable.is_empty() {
+        None
+    } else {
+        Some(usable)
+    }
+}
 
 /// Client for interacting with the Reality Defender API
 pub struct Client {
@@ -78,31 +115,8 @@ impl Client {
 
     /// Normalize scores from 0-100 to 0-1 range
     fn normalize_scores(&self, result: &AnalysisResult) -> DetectionResult {
-        let mut detection_result = DetectionResult {
-            // Replace FAKE with MANIPULATED in overall status
-            status: if result.status == "FAKE" {
-                "MANIPULATED".to_string()
-            } else {
-                result.status.clone()
-            },
-            request_id: result.request_id.clone(),
-            score: result.final_score.map(|final_score| final_score / 100.0),
-            models: vec![],
-        };
-
-        // Check if we have a score in resultsSummary metadata
-        if let Some(summary) = &result.results_summary {
-            if let Some(metadata) = &summary.metadata {
-                if let Some(final_score) = metadata.get("finalScore") {
-                    if let Some(score_value) = final_score.as_f64() {
-                        detection_result.score = Some(score_value / 100.0)
-                    }
-                }
-            }
-        }
-
         // Normalize model scores and handle missing scores
-        detection_result.models = result
+        let models: Vec<DetectionModelResult> = result
             .models
             .iter()
             .filter(|model| model.status != "NOT_APPLICABLE")
@@ -119,6 +133,37 @@ impl Client {
                 },
             })
             .collect();
+
+        let mut detection_result = DetectionResult {
+            // Replace FAKE with MANIPULATED in overall status
+            status: if result.status == "FAKE" {
+                "MANIPULATED".to_string()
+            } else {
+                result.status.clone()
+            },
+            request_id: result.request_id.clone(),
+            score: result.final_score.map(|final_score| final_score / 100.0),
+            models,
+            // IMAGE heatmaps only for artificial, non-ensemble models (matches UI).
+            heatmaps: None,
+        };
+
+        // Check if we have a score in resultsSummary metadata
+        if let Some(summary) = &result.results_summary {
+            if let Some(metadata) = &summary.metadata {
+                if let Some(final_score) = metadata.get("finalScore") {
+                    if let Some(score_value) = final_score.as_f64() {
+                        detection_result.score = Some(score_value / 100.0)
+                    }
+                }
+            }
+        }
+
+        detection_result.heatmaps = extract_heatmaps(
+            result.media_type.as_deref(),
+            result.heatmaps.as_ref(),
+            &detection_result.models,
+        );
 
         detection_result
     }
@@ -230,6 +275,7 @@ impl Client {
                     status: "PROCESSING".to_string(),
                     score: None,
                     models: Vec::new(),
+                    heatmaps: None,
                 })
                 .collect())
         }
@@ -955,5 +1001,56 @@ mod tests {
             }
             e => panic!("unexpected {:?}", e),
         }
+    }
+
+    #[test]
+    fn test_extract_heatmaps_filters_to_fake_non_ensemble_image_models() {
+        use super::extract_heatmaps;
+        use crate::models::DetectionModelResult;
+        use std::collections::HashMap;
+
+        let models = vec![
+            DetectionModelResult {
+                name: "rd-cedar-img".to_string(),
+                status: "MANIPULATED".to_string(),
+                score: Some(0.95),
+            },
+            DetectionModelResult {
+                name: "rd-elm-img".to_string(),
+                status: "AUTHENTIC".to_string(),
+                score: Some(0.1),
+            },
+            DetectionModelResult {
+                name: "rd-img-ensemble".to_string(),
+                status: "MANIPULATED".to_string(),
+                score: Some(0.95),
+            },
+        ];
+
+        let heatmaps = HashMap::from([
+            (
+                "rd-cedar-img".to_string(),
+                "https://example.com/cedar.png".to_string(),
+            ),
+            (
+                "rd-elm-img".to_string(),
+                "https://example.com/elm.png".to_string(),
+            ),
+            (
+                "rd-img-ensemble".to_string(),
+                "https://example.com/ensemble.png".to_string(),
+            ),
+        ]);
+
+        let usable = extract_heatmaps(Some("IMAGE"), Some(&heatmaps), &models).unwrap();
+        assert_eq!(usable.len(), 1);
+        assert_eq!(
+            usable.get("rd-cedar-img").unwrap(),
+            "https://example.com/cedar.png"
+        );
+        assert!(!usable.contains_key("rd-elm-img"));
+        assert!(!usable.contains_key("rd-img-ensemble"));
+
+        assert!(extract_heatmaps(Some("VIDEO"), Some(&heatmaps), &models).is_none());
     }
 }

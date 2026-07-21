@@ -211,6 +211,15 @@ pub struct AnalysisResult {
     #[serde(default)]
     #[serde(rename = "resultsSummary")]
     pub results_summary: Option<ResultsSummary>,
+
+    /// Media type from the API (IMAGE, VIDEO, AUDIO, TEXT)
+    #[serde(default)]
+    #[serde(rename = "mediaType")]
+    pub media_type: Option<String>,
+
+    /// Pre-signed per-model heatmap URLs from the API
+    #[serde(default)]
+    pub heatmaps: Option<std::collections::HashMap<String, String>>,
 }
 
 /// Summary of analysis results
@@ -262,6 +271,11 @@ pub struct DetectionResult {
 
     /// Results from individual detection models
     pub models: Vec<DetectionModelResult>,
+
+    /// Pre-signed IMAGE heatmaps for non-ensemble models with status FAKE;
+    /// None otherwise.
+    #[serde(default)]
+    pub heatmaps: Option<std::collections::HashMap<String, String>>,
 }
 
 /// Options for getting results with pagination and filtering
