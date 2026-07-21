@@ -7,8 +7,35 @@ use crate::models::{
     GetResultsOptions, UploadOptions, UploadResult, UserFeedback,
 };
 use futures::future;
+use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use tokio::time::sleep;
+
+/// Exposing non-empty URLs for IMAGE only.
+fn extract_heatmaps(
+    media_type: Option<&str>,
+    heatmaps: Option<&HashMap<String, String>>,
+) -> Option<HashMap<String, String>> {
+    let is_image = media_type
+        .map(|value| value.eq_ignore_ascii_case("IMAGE"))
+        .unwrap_or(false);
+    if !is_image {
+        return None;
+    }
+
+    let heatmaps = heatmaps?;
+    let usable: HashMap<String, String> = heatmaps
+        .iter()
+        .filter(|(_, url)| !url.is_empty())
+        .map(|(name, url)| (name.clone(), url.clone()))
+        .collect();
+
+    if usable.is_empty() {
+        None
+    } else {
+        Some(usable)
+    }
+}
 
 /// Client for interacting with the Reality Defender API
 pub struct Client {
@@ -88,6 +115,8 @@ impl Client {
             request_id: result.request_id.clone(),
             score: result.final_score.map(|final_score| final_score / 100.0),
             models: vec![],
+            // API returns heatmaps for all media types; only IMAGE URLs are meaningful.
+            heatmaps: extract_heatmaps(result.media_type.as_deref(), result.heatmaps.as_ref()),
         };
 
         // Check if we have a score in resultsSummary metadata
@@ -230,6 +259,7 @@ impl Client {
                     status: "PROCESSING".to_string(),
                     score: None,
                     models: Vec::new(),
+                    heatmaps: None,
                 })
                 .collect())
         }

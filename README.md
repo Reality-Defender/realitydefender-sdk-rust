@@ -71,9 +71,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
+    // IMAGE heatmaps only (pre-signed URLs expire after 15 minutes; None otherwise)
+    // model slug → PNG URL
+    println!("Heatmaps: {:?}", result.heatmaps);
+
     Ok(())
 }
 ```
+
+Re-fetch the result to refresh expired heatmap URLs. For other media-detail fields (aggregation metadata, explainability, thumbnails, etc.), use the [Media Detail API](https://docs.realitydefender.com/api-reference/endpoint/get_media_detail).
 
 ### Processing Multiple Files
 
