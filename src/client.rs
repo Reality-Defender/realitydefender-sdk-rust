@@ -11,8 +11,8 @@ use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use tokio::time::sleep;
 
-/// IMAGE heatmaps for non-ensemble models with an artificial result (API status
-/// `FAKE`, matching UI ARTIFICIAL) and a non-empty pre-signed URL.
+/// IMAGE heatmaps for non-ensemble models with API status `FAKE` and a
+/// non-empty pre-signed URL.
 fn extract_heatmaps(
     media_type: Option<&str>,
     heatmaps: Option<&HashMap<String, String>>,
@@ -999,5 +999,65 @@ mod tests {
             }
             e => panic!("unexpected {:?}", e),
         }
+    }
+
+    #[test]
+    fn test_extract_heatmaps_filters_to_fake_non_ensemble_image_models() {
+        use super::extract_heatmaps;
+        use crate::models::DetectionModel;
+        use std::collections::HashMap;
+
+        let models = vec![
+            DetectionModel {
+                name: "rd-cedar-img".to_string(),
+                status: "FAKE".to_string(),
+                prediction_number: None,
+                normalized_prediction_number: None,
+                final_score: Some(95.0),
+                info: None,
+            },
+            DetectionModel {
+                name: "rd-elm-img".to_string(),
+                status: "AUTHENTIC".to_string(),
+                prediction_number: None,
+                normalized_prediction_number: None,
+                final_score: Some(10.0),
+                info: None,
+            },
+            DetectionModel {
+                name: "rd-img-ensemble".to_string(),
+                status: "FAKE".to_string(),
+                prediction_number: None,
+                normalized_prediction_number: None,
+                final_score: Some(95.0),
+                info: None,
+            },
+        ];
+
+        let heatmaps = HashMap::from([
+            (
+                "rd-cedar-img".to_string(),
+                "https://example.com/cedar.png".to_string(),
+            ),
+            (
+                "rd-elm-img".to_string(),
+                "https://example.com/elm.png".to_string(),
+            ),
+            (
+                "rd-img-ensemble".to_string(),
+                "https://example.com/ensemble.png".to_string(),
+            ),
+        ]);
+
+        let usable = extract_heatmaps(Some("IMAGE"), Some(&heatmaps), &models).unwrap();
+        assert_eq!(usable.len(), 1);
+        assert_eq!(
+            usable.get("rd-cedar-img").unwrap(),
+            "https://example.com/cedar.png"
+        );
+        assert!(!usable.contains_key("rd-elm-img"));
+        assert!(!usable.contains_key("rd-img-ensemble"));
+
+        assert!(extract_heatmaps(Some("VIDEO"), Some(&heatmaps), &models).is_none());
     }
 }

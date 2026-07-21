@@ -272,7 +272,8 @@ pub struct DetectionResult {
     /// Results from individual detection models
     pub models: Vec<DetectionModelResult>,
 
-    /// Pre-signed heatmap URLs for IMAGE media (non-ensemble artificial models only).
+    /// Pre-signed IMAGE heatmaps for non-ensemble models with status FAKE;
+    /// None otherwise.
     #[serde(default)]
     pub heatmaps: Option<std::collections::HashMap<String, String>>,
 }
