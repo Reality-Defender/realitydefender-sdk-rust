@@ -19,6 +19,8 @@ pub mod api_paths {
     pub const SIGNED_URL: &str = "/api/files/aws-presigned";
     /// Path for retrieving media results
     pub const MEDIA_RESULT: &str = "/api/media/users";
+    /// Path for deleting a scan request (`DELETE /api/media/{requestId}`)
+    pub const DELETE_MEDIA: &str = "/api/media";
     /// Path for retrieving all media results with pagination
     pub const ALL_MEDIA_RESULTS: &str = "/api/v2/media/users/pages";
     // Path for posting social media links
@@ -104,6 +106,33 @@ impl HttpClient {
 
         let response = self.client.execute(request).await?;
         self.handle_response(response).await
+    }
+
+    /// DELETE an endpoint. 200 and 201 match the other requests. 204 is also
+    /// success so an empty body is not parsed as JSON.
+    pub async fn delete(&self, endpoint: &str) -> Result<()> {
+        let url = format!("{}{}", self.config.get_base_url(), endpoint);
+
+        let request = self
+            .client
+            .delete(&url)
+            .header("X-API-KEY", &self.config.api_key)
+            .header("Accept", "application/json")
+            .build()?;
+
+        let response = self.client.execute(request).await?;
+        let status = response.status();
+        if status == StatusCode::NO_CONTENT
+            || status == StatusCode::OK
+            || status == StatusCode::CREATED
+        {
+            let _ = response.bytes().await?;
+            return Ok(());
+        }
+
+        self.handle_response::<serde_json::Value>(response)
+            .await
+            .map(|_| ())
     }
 
     /// Make a PUT request to upload data to a URL (used for presigned URLs)
