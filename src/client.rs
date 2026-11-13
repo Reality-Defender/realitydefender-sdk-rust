@@ -82,6 +82,19 @@ impl Client {
         self.http_client.create_user_feedback(&options).await
     }
 
+    /// Delete a scan request (`DELETE /api/media/{requestId}`).
+    ///
+    /// The API responds with 204 No Content.
+    pub async fn delete_request(&self, request_id: &str) -> Result<()> {
+        let request_id = request_id.trim();
+        if request_id.is_empty() {
+            return Err(Error::InvalidRequest("requestId is required".to_string()));
+        }
+
+        let endpoint = format!("{}/{}", api_paths::DELETE_MEDIA, request_id);
+        self.http_client.delete(&endpoint).await
+    }
+
     /// Get the analysis result for a specific request ID
     pub async fn get_result(
         &self,
@@ -1001,6 +1014,86 @@ mod tests {
             }
             e => panic!("unexpected {:?}", e),
         }
+    }
+
+    #[tokio::test]
+    async fn test_delete_request_success() {
+        let mut server = mockito::Server::new_async().await;
+
+        let m = server
+            .mock("DELETE", "/api/media/req-1")
+            .with_status(204)
+            .match_header("X-API-KEY", "test_api_key")
+            .create_async()
+            .await;
+
+        let client = Client::new(Config {
+            api_key: "test_api_key".to_string(),
+            base_url: Some(server.url()),
+            ..Default::default()
+        })
+        .unwrap();
+
+        client.delete_request(" req-1 ").await.unwrap();
+        m.assert_async().await;
+    }
+
+    #[tokio::test]
+    async fn test_delete_request_accepts_200() {
+        let mut server = mockito::Server::new_async().await;
+
+        let _m = server
+            .mock("DELETE", "/api/media/req-1")
+            .with_status(200)
+            .with_body(r#"{"ok":true}"#)
+            .create_async()
+            .await;
+
+        let client = Client::new(Config {
+            api_key: "test_api_key".to_string(),
+            base_url: Some(server.url()),
+            ..Default::default()
+        })
+        .unwrap();
+
+        client.delete_request("req-1").await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_delete_request_not_found() {
+        let mut server = mockito::Server::new_async().await;
+
+        let _m = server
+            .mock("DELETE", "/api/media/missing")
+            .with_status(404)
+            .with_body(r#"{"code":"not-found","response":"Media not found"}"#)
+            .create_async()
+            .await;
+
+        let client = Client::new(Config {
+            api_key: "test_api_key".to_string(),
+            base_url: Some(server.url()),
+            ..Default::default()
+        })
+        .unwrap();
+
+        let err = client.delete_request("missing").await.unwrap_err();
+        assert!(matches!(err, Error::NotFound));
+    }
+
+    #[tokio::test]
+    async fn test_delete_request_validation() {
+        let server = mockito::Server::new_async().await;
+
+        let client = Client::new(Config {
+            api_key: "test_api_key".to_string(),
+            base_url: Some(server.url()),
+            ..Default::default()
+        })
+        .unwrap();
+
+        let err = client.delete_request("   ").await.unwrap_err();
+        assert!(matches!(err, Error::InvalidRequest(_)));
     }
 
     #[test]
