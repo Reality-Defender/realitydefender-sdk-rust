@@ -82,10 +82,10 @@ impl Client {
         self.http_client.create_user_feedback(&options).await
     }
 
-    /// Delete a scan request (`DELETE /api/media/{requestId}`).
+    /// Delete a scan analysis (`DELETE /api/media/{requestId}`).
     ///
     /// The API responds with 204 No Content.
-    pub async fn delete_request(&self, request_id: &str) -> Result<()> {
+    pub async fn delete_analysis(&self, request_id: &str) -> Result<()> {
         let request_id = request_id.trim();
         if request_id.is_empty() {
             return Err(Error::InvalidRequest("requestId is required".to_string()));
@@ -1017,7 +1017,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_delete_request_success() {
+    async fn test_delete_analysis_success() {
         let mut server = mockito::Server::new_async().await;
 
         let m = server
@@ -1034,12 +1034,12 @@ mod tests {
         })
         .unwrap();
 
-        client.delete_request(" req-1 ").await.unwrap();
+        client.delete_analysis(" req-1 ").await.unwrap();
         m.assert_async().await;
     }
 
     #[tokio::test]
-    async fn test_delete_request_accepts_200() {
+    async fn test_delete_analysis_accepts_200() {
         let mut server = mockito::Server::new_async().await;
 
         let _m = server
@@ -1056,11 +1056,11 @@ mod tests {
         })
         .unwrap();
 
-        client.delete_request("req-1").await.unwrap();
+        client.delete_analysis("req-1").await.unwrap();
     }
 
     #[tokio::test]
-    async fn test_delete_request_not_found() {
+    async fn test_delete_analysis_not_found() {
         let mut server = mockito::Server::new_async().await;
 
         let _m = server
@@ -1077,12 +1077,12 @@ mod tests {
         })
         .unwrap();
 
-        let err = client.delete_request("missing").await.unwrap_err();
+        let err = client.delete_analysis("missing").await.unwrap_err();
         assert!(matches!(err, Error::NotFound));
     }
 
     #[tokio::test]
-    async fn test_delete_request_validation() {
+    async fn test_delete_analysis_validation() {
         let server = mockito::Server::new_async().await;
 
         let client = Client::new(Config {
@@ -1092,7 +1092,7 @@ mod tests {
         })
         .unwrap();
 
-        let err = client.delete_request("   ").await.unwrap_err();
+        let err = client.delete_analysis("   ").await.unwrap_err();
         assert!(matches!(err, Error::InvalidRequest(_)));
     }
 
