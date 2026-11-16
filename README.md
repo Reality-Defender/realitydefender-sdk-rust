@@ -143,6 +143,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
+### Delete an analysis
+
+Deletes a scan analysis (`DELETE /api/media/{requestId}`). The API responds with 204 No Content.
+
+```rust
+client.delete_analysis(&upload_result.request_id).await?;
+```
+
 ### User feedback
 
 ```rust
