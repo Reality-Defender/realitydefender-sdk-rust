@@ -108,8 +108,7 @@ impl HttpClient {
         self.handle_response(response).await
     }
 
-    /// DELETE an endpoint. 200 and 201 match the other requests. 204 is also
-    /// success so an empty body is not parsed as JSON.
+    /// Make a DELETE request
     pub async fn delete(&self, endpoint: &str) -> Result<()> {
         let url = format!("{}{}", self.config.get_base_url(), endpoint);
 
@@ -121,11 +120,7 @@ impl HttpClient {
             .build()?;
 
         let response = self.client.execute(request).await?;
-        let status = response.status();
-        if status == StatusCode::NO_CONTENT
-            || status == StatusCode::OK
-            || status == StatusCode::CREATED
-        {
+        if response.status() == StatusCode::NO_CONTENT {
             let _ = response.bytes().await?;
             return Ok(());
         }
